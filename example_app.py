@@ -25,7 +25,7 @@ if __name__ == "__main__":
     import logging
 
     logging.basicConfig(filename="example_app.log")
-    logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
     
     Base.metadata.create_all(engine)
 

@@ -1,9 +1,15 @@
 import datetime
+import sys
 
 from obspy import read_inventory
 
 from sqlalchemy import engine_from_config
 from sqlalchemy.orm import sessionmaker
+
+# change sys.path
+my_path = ["../"]
+my_path.extend(sys.path)
+sys.path = my_path
 
 from aqms_ir.configure import configure
 #from schema import Base, Abbreviation, Unit, Format, Station
@@ -29,7 +35,7 @@ if __name__ == "__main__":
     
     Base.metadata.create_all(engine)
 
-    inv = read_inventory("inventory.xml", format="STATIONXML")
+    inv = read_inventory("data/inventory.xml", format="STATIONXML")
 
     session = Session()
     net_id = get_net_id(session, inv.networks[0])
