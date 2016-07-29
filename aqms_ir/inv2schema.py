@@ -188,20 +188,20 @@ def channel2db(session, network_code, station_code, channel):
     signal_unit = get_unit(session, channel.response.instrument_sensitivity.input_units, channel.response.instrument_sensitivity.input_units_description)
     format_id = get_format_id(session)
 
-    try:
-        db_channel = session.query(Channel).filter_by(net=network_code, \
-                     sta=station_code, seedchan=channel.code, \
-                     location=channel.location_code, \
-                     ondate=channel.start_date.datetime).one()
-    except Exception as e:
-        logging.info("Channel not in db: {}".format(e))
+    #try:
+        #db_channel = session.query(Channel).filter_by(net=network_code, \
+        #             sta=station_code, seedchan=channel.code, \
+        #             location=channel.location_code, \
+        #             ondate=channel.start_date.datetime).one()
+    #except Exception as e:
+        #logging.info("Channel not in db: {}".format(e))
         # check to see if there are other epochs for this channel, if so, delete them. Too difficult to figure out what user wants to do (insert, replace, etc.)
         # removed = session.query(Channel).filter(net=network_code, sta=station_code, seedchan=channel.code, location=channel.location_code, ondate != channel.start_data.datetime).delete()
         # if removed > 0:
         #     logging.info("Removed {} epochs for channel {}.{}.{}.{}\n".format(removed,network_code, station_code, channel.code, channel.location_code))
         # create the new entry
-        db_channel = Channel(net=network_code, sta=station_code, seedchan=channel.code, location=channel.location_code, ondate=channel.start_date.datetime)
-        session.add(db_channel)
+    db_channel = Channel(net=network_code, sta=station_code, seedchan=channel.code, location=channel.location_code, ondate=channel.start_date.datetime)
+    session.add(db_channel)
             
 
     if inid:
@@ -225,6 +225,12 @@ def channel2db(session, network_code, station_code, channel):
     except Exception as e:
         logging.error("Cannot save to channel_data: {}".format(e))
 
+    if channel.response:
+        try:
+            response2db(session, network_code, station_code, channel) \
+        except Exception as e:
+            print "Unable to add response for {}.{}.{} to db: {}".format(network_code,station_code,channel.code,e)
+            continue
     return
 
 
@@ -235,4 +241,41 @@ def channels2db(session, network_code, station_code, channels):
         except Exception as e:
             print "Unable to add channel {} to db: {}".format(channel.code, e)
             continue
+    return
+
+def response2db(session, network_code, station_code, channel,fill_all=False):
+
+    # for now, only fill simple_response table
+    simple_response2db(session,network_code,station_code,channel)
+
+    if fill_all:
+        # do all IR tables, not implemented yet.
+        pass
+
+    return
+
+def simple_response2db(session,network_code,station_code,channel):
+    from util import simple_response
+
+    fn, damping, lowest_freq, highest_freq, gain = simple_response(channel.response)
+    db_simple_response = SimpleResponse(net=network_code, sta=station_code, \
+                         seedchan=channel.code, location=channel.location_code, \
+                         ondate=channel.start_date.datetime)
+
+    session.add(db_simple_response)
+
+    db_simple_response.channel = channel.code
+    db_simple_response.natural_frequency = fn
+    db_simple_response.damping_constant = damping
+    db_simple_response.gain = gain
+    db_simple_response.gain_units = "DU/" + channel.input_units
+    db_simple_response.low_freq_corner = highest_freq
+    db_simple_response.high_freq_corner = lowest_freq
+    db_simple_response.offdate = channel.end_date.datetime
+
+    try:
+        session.commit()
+    except Exception as e:
+        print "Unable to add simple_response {} to db".format(db_simple_response,e)
+        continue
     return

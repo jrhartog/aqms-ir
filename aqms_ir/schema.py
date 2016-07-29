@@ -97,3 +97,30 @@ class Channel(Base):
     def __repr__(self):
         return "Channel: net={}, sta={}, seedchan={}, location={}, ondate={}, offdate={}".\
         format(self.net, self.sta, self.seedchan, self.location, self.ondate, self.offdate)
+
+class SimpleResponse(Base):
+    __tablename__ = "simple_response"
+
+    net = Column('net', String(8), primary_key=True, nullable=False)
+    sta = Column('sta', String(6), primary_key=True, nullable=False)
+    seedchan = Column('seedchan', String(3), primary_key=True, nullable=False)
+    location = Column('location', String(2), primary_key=True, nullable=False)
+    ondate = Column('ondate', DateTime, primary_key=True, nullable=False)
+    channel = Column('channel', String(8))
+    channelsrc = Column('channelsrc', String(8), default="SEED")
+    natural_frequency = Column('natural_frequency', Numeric)
+    damping_constant = Column('damping_constant', Numeric)
+    gain = Column('gain', Numeric)
+    low_freq_corner = Column('low_freq_corner', Numeric)
+    high_freq_corner = Column('high_freq_corner', Numeric)
+    offdate = Column('offdate', DateTime, default=datetime.datetime(3000,1,1))
+    lddate = Column('lddate', DateTime, server_default=text('NOW()'))
+    dlogsens = Column('dlogsens', Numeric)
+
+    def __repr__(self):
+        return "SimpleResponse: net={}, sta={}, seedchan={}, ondate={}, \
+                offdate={}, gain={}, low_freq_cutoff={}, high_freq_cutoff={}, \
+                natural_frequency={}, damping_constant={}".\
+                format(self.net, self.sta, self.seedchan, self.location, self.ondate, \
+                self.offdate, self.gain, self.low_freq_corner, self.high_freq_corner, \
+                self.natural_frequency, self.damping_constant)
