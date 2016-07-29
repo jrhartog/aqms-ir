@@ -257,7 +257,8 @@ def response2db(session, network_code, station_code, channel,fill_all=False):
 def simple_response2db(session,network_code,station_code,channel):
     from util import simple_response
 
-    fn, damping, lowest_freq, highest_freq, gain = simple_response(channel.response)
+    fn, damping, lowest_freq, highest_freq, gain = simple_response(channel.sample_rate,channel.response)
+
     db_simple_response = SimpleResponse(net=network_code, sta=station_code, \
                          seedchan=channel.code, location=channel.location_code, \
                          ondate=channel.start_date.datetime)
