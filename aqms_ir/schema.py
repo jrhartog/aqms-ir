@@ -1,3 +1,6 @@
+"""
+    Classes that describe tables
+"""
 import datetime
 
 from sqlalchemy.ext.declarative import declarative_base
@@ -111,6 +114,7 @@ class SimpleResponse(Base):
     natural_frequency = Column('natural_frequency', Numeric)
     damping_constant = Column('damping_constant', Numeric)
     gain = Column('gain', Numeric)
+    gain_units = Column('gain_units', String)
     low_freq_corner = Column('low_freq_corner', Numeric)
     high_freq_corner = Column('high_freq_corner', Numeric)
     offdate = Column('offdate', DateTime, default=datetime.datetime(3000,1,1))
@@ -118,9 +122,9 @@ class SimpleResponse(Base):
     dlogsens = Column('dlogsens', Numeric)
 
     def __repr__(self):
-        return "SimpleResponse: net={}, sta={}, seedchan={}, ondate={}, \
-                offdate={}, gain={}, low_freq_cutoff={}, high_freq_cutoff={}, \
+        return "SimpleResponse: net={}, sta={}, seedchan={}, location={}, ondate={}, \
+                offdate={}, gain={} ({}), low_freq_cutoff={}, high_freq_cutoff={}, \
                 natural_frequency={}, damping_constant={}".\
                 format(self.net, self.sta, self.seedchan, self.location, self.ondate, \
-                self.offdate, self.gain, self.low_freq_corner, self.high_freq_corner, \
+                self.offdate, self.gain, self.gain_units, self.low_freq_corner, self.high_freq_corner, \
                 self.natural_frequency, self.damping_constant)

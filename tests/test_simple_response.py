@@ -1,3 +1,4 @@
+import numpy as np
 def test_simple_response():
     import matplotlib.pyplot as plt
     try:
@@ -9,14 +10,17 @@ def test_simple_response():
     except:
         from obspy.signal.invsim import paz2AmpValueOfFreqResp as paz_2_amplitude_value_of_freq_resp
 
+    #{'zeros': [(-31.617+0j), 0j, 0j], 'poles': [(-0.1486-0.1486j), (-0.1486+0.1486j), (-336.766-136.656j), (-336.766+136.656j), (-47.0636+0j), (-2469.36+0j)], 'gain': 491884000.0}
+
     N = 1024
     sample_rate = 100.
     normalization_frequency = 1.0
     normalization_factor = 1.6
     poles = [(-5.026548 + 3.769911j), (-5.026548 - 3.769911j)]
     zeros = [ complex(0.), complex(0.)]
-    amplitude, frequency = paz_to_freq_resp(poles,zeros,normalization_factor,1.0/sample_rate,2*N,freq=True)
+    amplitude, frequency = paz_to_freq_resp(poles,zeros,1.0,1.0/sample_rate,2*N,freq=True)
     print len(amplitude)
+    print np.max(amplitude)
     plt.loglog(frequency,abs(amplitude),basex=10,basey=10)
     plt.show()
     paz = { "poles" : poles, "zeros" : zeros, "gain" : normalization_factor }

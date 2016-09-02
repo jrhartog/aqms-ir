@@ -1,7 +1,7 @@
 """ inventory is an obspy Inventory object """
 import logging
 
-from schema import Abbreviation, Format, Unit, Channel, Station
+from schema import Abbreviation, Format, Unit, Channel, Station, SimpleResponse
 
 def inventory2db(session, inventory):
     if inventory.networks:
@@ -60,7 +60,6 @@ def get_inid(session, channel):
     else:
         instr_entry = Abbreviation(description=channel.sensor.description)
         session.add(instr_entry)
-        print instr_entry.id
         try:
             session.commit()
             result = session.query(Abbreviation).filter_by(description=channel.sensor.description).first()
@@ -121,8 +120,10 @@ def remove_station(session, network, station):
     network_code = network.code
     station_code = station.code
 
+    status = 0
+
     try:
-        status = session.query(Station).filter(net=network_code,sta=station_code).delete()
+        status = session.query(Station).filter_by(net=network_code,sta=station_code).delete()
     except Exception as e:
         logging.error("remove_station: {}".format(e))
 
@@ -137,6 +138,53 @@ def remove_station(session, network, station):
     
     return status
 
+def remove_channels(session, network_code, station):
+    station_code = station.code
+    status = 0
+    for channel in station.channels:
+        try:
+            status = status + remove_channel(session, network_code, station_code, channel)
+        except Exception as e:
+            logging.error("Unable to delete channel {}.{}.{}.{}: {}".format( \
+            network_code, station_code, channel.code, channel.location_code, e))
+            continue # next channel
+    return status
+
+def remove_channel(session, network_code, station_code, channel):
+    """
+        Removes this station from station_data and will remove
+        its channels as well. See remove_channels.
+    """
+    status = 0
+    try:
+        status = session.query(Channel).filter_by(net=network_code,sta=station_code \
+                 ,seedchan=channel.code,location=channel.location_code).delete()
+    except Exception as e:
+        logging.error("remove_channel: {}".format(e))
+
+    try:
+        session.commit()
+    except Exception as e:
+        logging.error("Unable to delete channel {}.{}.{}.{}: {}".format(network_code,station_code,channel.code, channel.location_code,e))
+
+    if channel.response:
+        try:
+            my_status = remove_simple_response(session, network_code, station_code, channel.code, channel.location_code)
+        except Exception as e:
+            logging.error("remove_channel ({}): {}".format(my_status, e))
+
+    return status
+
+def remove_simple_response(session, network_code, station_code, channel_code, location_code):
+
+    try:
+        status = session.query(SimpleResponse).filter_by(net=network_code,sta=station_code \
+                 ,seedchan=channel_code,location=location_code).delete()
+    except Exception as e:
+        logging.error("remove_simple_response: {}".format(e))
+
+    return status
+
 def station2db(session, network, station):
 
     net_id = get_net_id(session,network)
@@ -144,16 +192,13 @@ def station2db(session, network, station):
     station_code = station.code
     # first remove any prior meta-data associated with Net-Sta and Net-Sta-Chan-Loc
     try:
-        status = remove_station(network,station)
+        status = remove_station(session,network,station)
+        logging.info("Removed {} channels for station {}".format(status-1,station_code))
     except Exception as e:
         logging.error("Exception: {}".format(e))
 
-    try:
-        db_station = session.query(Station).filter_by(net=network.code, sta=station.code).one()
-    except Exception as e:
-        logging.error("Exception: {}".format(e))
-        db_station = Station(net=network.code, sta=station.code, ondate=station.start_date.datetime)
-        session.add(db_station)
+    db_station = Station(net=network.code, sta=station.code, ondate=station.start_date.datetime)
+    session.add(db_station)
 
     db_station.net_id = net_id
     db_station.offdate = station.end_date.datetime
@@ -177,7 +222,7 @@ def stations2db(session, network):
         try:
              station2db(session, network, station)
         except Exception as e:
-            print "Unable to add station {} to db: {}".format(station.code, e)
+            logging.error("Unable to add station {} to db: {}".format(station.code, e))
             continue
     return
 
@@ -227,10 +272,10 @@ def channel2db(session, network_code, station_code, channel):
 
     if channel.response:
         try:
-            response2db(session, network_code, station_code, channel) \
+            response2db(session, network_code, station_code, channel)
         except Exception as e:
-            print "Unable to add response for {}.{}.{} to db: {}".format(network_code,station_code,channel.code,e)
-            continue
+            logging.error("Unable to add response for {}.{}.{} to db: {}".format(network_code,station_code,channel.code,e))
+
     return
 
 
@@ -239,7 +284,7 @@ def channels2db(session, network_code, station_code, channels):
         try:
             channel2db(session, network_code, station_code, channel)
         except Exception as e:
-            print "Unable to add channel {} to db: {}".format(channel.code, e)
+            logging.error("Unable to add channel {} to db: {}".format(channel.code, e))
             continue
     return
 
@@ -269,7 +314,7 @@ def simple_response2db(session,network_code,station_code,channel):
     db_simple_response.natural_frequency = fn
     db_simple_response.damping_constant = damping
     db_simple_response.gain = gain
-    db_simple_response.gain_units = "DU/" + channel.input_units
+    db_simple_response.gain_units = "DU/" + channel.response.instrument_sensitivity.input_units
     db_simple_response.low_freq_corner = highest_freq
     db_simple_response.high_freq_corner = lowest_freq
     db_simple_response.offdate = channel.end_date.datetime
@@ -277,6 +322,6 @@ def simple_response2db(session,network_code,station_code,channel):
     try:
         session.commit()
     except Exception as e:
-        print "Unable to add simple_response {} to db".format(db_simple_response,e)
-        continue
+        logging.error("Unable to add simple_response {} to db".format(db_simple_response,e))
+
     return

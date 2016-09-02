@@ -1,4 +1,9 @@
 def configure(filename=None):
+    """
+        Creates dictionary to pass to a sqlalchemy.engine_from_config() call
+        So far, this has only been tested with a PostgreSQL database engine, but
+        should work for other engines as well.
+    """
     import os
     DB_HOST = os.getenv("DB_HOST", "localhost")
     DB_NAME = os.getenv("DB_NAME", "aqms_ir")
