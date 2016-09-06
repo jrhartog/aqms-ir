@@ -1,17 +1,8 @@
 def configure(filename=None):
     """
         Creates dictionary to pass to a sqlalchemy.engine_from_config() call
-        So far, this has only been tested with a PostgreSQL database engine, but
-        should work for other engines as well.
     """
     import os
-    DB_HOST = os.getenv("DB_HOST", "localhost")
-    DB_NAME = os.getenv("DB_NAME", "aqms_ir")
-    DB_PORT = os.getenv("DB_PORT", "5432")
-    DB_USER = os.getenv("DB_USER", "trinetdb")
-    DB_PASSWORD = os.getenv("DB_PASSWORD")
-    if not DB_PASSWORD:
-        DB_PASSWORD = raw_input("Password for user {} on {}: ".format(DB_USER,DB_NAME))
 
     configuration = {}
     if filename:
@@ -25,5 +16,12 @@ def configure(filename=None):
         except:
             raise
     else:
+        DB_HOST = os.getenv("DB_HOST", "localhost")
+        DB_NAME = os.getenv("DB_NAME", "aqms_ir")
+        DB_PORT = os.getenv("DB_PORT", "5432")
+        DB_USER = os.getenv("DB_USER", "trinetdb")
+        DB_PASSWORD = os.getenv("DB_PASSWORD")
+        if not DB_PASSWORD:
+            DB_PASSWORD = raw_input("Password for user {} on {}: ".format(DB_USER,DB_NAME))
         configuration["sqlalchemy.url"] = "postgresql://{}:{}@{}:{}/{}".format(DB_USER,DB_PASSWORD,DB_HOST,DB_PORT,DB_NAME)
     return configuration

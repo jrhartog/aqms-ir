@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+
+import datetime
+import logging
+
+from obspy import read_inventory
+
+from sqlalchemy import engine_from_config
+from sqlalchemy.orm import sessionmaker
+
+from aqms_ir.configure import configure
+from aqms_ir.inv2schema import inventory2db
+from aqms_ir.schema import Base
+
+# Global scope: start the engine and bind a Session factory to it
+    
+# create configured engine instance
+global engine 
+engine = engine_from_config(configure(), prefix='sqlalchemy.')
+
+# create a configured "Session" class
+Session = sessionmaker(bind=engine)
+
+if __name__ == "__main__":
+
+    logging.basicConfig(filename="inventory2aqms.log", level=logging.DEBUG)
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
+    
+    # This command will create the database tables if they do not exist yet.
+    Base.metadata.create_all(engine)
+
+    inv = read_inventory("inventory.xml", format="STATIONXML")
+
+    session = Session()
+    inventory2db(session,inv)
+    session.close()

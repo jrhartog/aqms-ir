@@ -5,28 +5,28 @@ from schema import Abbreviation, Format, Unit, Channel, Station, SimpleResponse
 
 def inventory2db(session, inventory):
     if inventory.networks:
-        networks2db(session, inventory.networks)
+        _networks2db(session, inventory.networks)
     else:
         logging.warning("This inventory has no networks, doing nothing.")
     return
 
-def networks2db(session, networks):
+def _networks2db(session, networks):
     for network in networks:
-        network2db(session,network)
+        _network2db(session,network)
     return
 
-def network2db(session, network):
+def _network2db(session, network):
     net_id = None
     if network.stations:
-        stations2db(session,network)
+        _stations2db(session,network)
     else:
         # only insert an entry into D_Abbreviation
-        net_id = get_net_id(session, network)
+        net_id = _get_net_id(session, network)
         if not net_id:
             logging.warning("Did not add network description to database")
     return
 
-def get_net_id(session, network):
+def _get_net_id(session, network):
     """ 
        given obspy Network object 
        get id from d_abbreviation with
@@ -48,7 +48,7 @@ def get_net_id(session, network):
             logging.error("Not able to commit abbreviation and get net_id")
     return None
 
-def get_inid(session, channel):
+def _get_inid(session, channel):
     """ 
        get id from d_abbreviation with
        same instrument type description (creates a new entry
@@ -68,10 +68,10 @@ def get_inid(session, channel):
             logging.error("Not able to commit abbreviation and get inid")
     return None
 
-def get_unit(session, unit_name, unit_description):
+def _get_unit(session, unit_name, unit_description):
     """ 
-       get id from d_abbreviation with
-       same instrument type description (creates a new entry
+       get id from d_unit with
+       same unit description (creates a new entry
        if none exists yet).
     """
     result = session.query(Unit).filter_by(name=unit_name, description=unit_description).first()
@@ -88,7 +88,7 @@ def get_unit(session, unit_name, unit_description):
             logging.error("Not able to commit abbreviation and get unit id")
     return None
 
-def get_format_id(session, format_name=None):
+def _get_format_id(session, format_name=None):
     """ 
        get id from d_format
        (creates a new entry
@@ -112,7 +112,7 @@ def get_format_id(session, format_name=None):
             logging.error("Not able to commit format_name and get format id")
     return None
 
-def remove_station(session, network, station):
+def _remove_station(session, network, station):
     """
         Removes this station from station_data and will remove
         its channels as well. See remove_channels.
@@ -134,23 +134,23 @@ def remove_station(session, network, station):
         sys.exit()
 
     if station.channels:
-        status = status + remove_channels(session, network_code, station)
+        status = status + _remove_channels(session, network_code, station)
     
     return status
 
-def remove_channels(session, network_code, station):
+def _remove_channels(session, network_code, station):
     station_code = station.code
     status = 0
     for channel in station.channels:
         try:
-            status = status + remove_channel(session, network_code, station_code, channel)
+            status = status + _remove_channel(session, network_code, station_code, channel)
         except Exception as e:
             logging.error("Unable to delete channel {}.{}.{}.{}: {}".format( \
             network_code, station_code, channel.code, channel.location_code, e))
             continue # next channel
     return status
 
-def remove_channel(session, network_code, station_code, channel):
+def _remove_channel(session, network_code, station_code, channel):
     """
         Removes this station from station_data and will remove
         its channels as well. See remove_channels.
@@ -169,13 +169,13 @@ def remove_channel(session, network_code, station_code, channel):
 
     if channel.response:
         try:
-            my_status = remove_simple_response(session, network_code, station_code, channel.code, channel.location_code)
+            my_status = _remove_simple_response(session, network_code, station_code, channel.code, channel.location_code)
         except Exception as e:
             logging.error("remove_channel ({}): {}".format(my_status, e))
 
     return status
 
-def remove_simple_response(session, network_code, station_code, channel_code, location_code):
+def _remove_simple_response(session, network_code, station_code, channel_code, location_code):
 
     try:
         status = session.query(SimpleResponse).filter_by(net=network_code,sta=station_code \
@@ -185,14 +185,14 @@ def remove_simple_response(session, network_code, station_code, channel_code, lo
 
     return status
 
-def station2db(session, network, station):
+def _station2db(session, network, station):
 
-    net_id = get_net_id(session,network)
+    net_id = _get_net_id(session,network)
     network_code = network.code
     station_code = station.code
     # first remove any prior meta-data associated with Net-Sta and Net-Sta-Chan-Loc
     try:
-        status = remove_station(session,network,station)
+        status = _remove_station(session,network,station)
         logging.info("Removed {} channels for station {}".format(status-1,station_code))
     except Exception as e:
         logging.error("Exception: {}".format(e))
@@ -214,24 +214,24 @@ def station2db(session, network, station):
         
 
     if station.channels:
-        channels2db(session, network_code, station_code, station.channels)
+        _channels2db(session, network_code, station_code, station.channels)
     return
 
-def stations2db(session, network):
+def _stations2db(session, network):
     for station in network.stations:
         try:
-             station2db(session, network, station)
+             _station2db(session, network, station)
         except Exception as e:
             logging.error("Unable to add station {} to db: {}".format(station.code, e))
             continue
     return
 
-def channel2db(session, network_code, station_code, channel):
+def _channel2db(session, network_code, station_code, channel):
 
-    inid = get_inid(session, channel)
-    calib_unit = get_unit(session, channel.calibration_units, channel.calibration_units_description)
-    signal_unit = get_unit(session, channel.response.instrument_sensitivity.input_units, channel.response.instrument_sensitivity.input_units_description)
-    format_id = get_format_id(session)
+    inid = _get_inid(session, channel)
+    calib_unit = _get_unit(session, channel.calibration_units, channel.calibration_units_description)
+    signal_unit = _get_unit(session, channel.response.instrument_sensitivity.input_units, channel.response.instrument_sensitivity.input_units_description)
+    format_id = _get_format_id(session)
 
     #try:
         #db_channel = session.query(Channel).filter_by(net=network_code, \
@@ -272,26 +272,26 @@ def channel2db(session, network_code, station_code, channel):
 
     if channel.response:
         try:
-            response2db(session, network_code, station_code, channel)
+            _response2db(session, network_code, station_code, channel)
         except Exception as e:
             logging.error("Unable to add response for {}.{}.{} to db: {}".format(network_code,station_code,channel.code,e))
 
     return
 
 
-def channels2db(session, network_code, station_code, channels):
+def _channels2db(session, network_code, station_code, channels):
     for channel in channels:
         try:
-            channel2db(session, network_code, station_code, channel)
+            _channel2db(session, network_code, station_code, channel)
         except Exception as e:
             logging.error("Unable to add channel {} to db: {}".format(channel.code, e))
             continue
     return
 
-def response2db(session, network_code, station_code, channel,fill_all=False):
+def _response2db(session, network_code, station_code, channel,fill_all=False):
 
     # for now, only fill simple_response table
-    simple_response2db(session,network_code,station_code,channel)
+    _simple_response2db(session,network_code,station_code,channel)
 
     if fill_all:
         # do all IR tables, not implemented yet.
@@ -299,7 +299,7 @@ def response2db(session, network_code, station_code, channel,fill_all=False):
 
     return
 
-def simple_response2db(session,network_code,station_code,channel):
+def _simple_response2db(session,network_code,station_code,channel):
     from util import simple_response
 
     fn, damping, lowest_freq, highest_freq, gain = simple_response(channel.sample_rate,channel.response)
