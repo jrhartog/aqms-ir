@@ -12,7 +12,7 @@ setup(name="aqms-ir",
         'Programming Language :: Python :: 2.7',
         'Intended Audience :: Science/Research',
     ],
-    packages=["aqms-ir"],
+    packages=["aqms_ir"],
     scripts=["inventory2aqms"],
     install_requires=["numpy","obspy>=0.10.2","SQLAlchemy","psycopg2"],
     zip_safe=False)
