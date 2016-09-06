@@ -15,5 +15,5 @@ setup(name="aqms-ir",
     packages=["aqms-ir"],
     scripts=["inventory2aqms"],
     install_requires=["numpy","obspy>=0.10.2","SQLAlchemy","psycopg2"],
-    zip_safe=false)
+    zip_safe=False)
 
