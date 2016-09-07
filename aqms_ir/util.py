@@ -55,7 +55,7 @@ def natural_frequency_and_damping(poles,f_hp,f_lp,sensor_type="VEL"):
                 omega_s = np.abs(p1)
                 fs_candidate.append(omega_s/(2*np.pi))
                 b_candidate.append(-1*p1.real/omega_s)
-                logging.info("candidate conjugate poles: {} and {}, ws={}, fs={}, b={} (compare to {}-{})".format(p1,p2,omega_s,omega_s/(2*np.pi),-1*p1.real/omega_s,f_hp,f_lp))
+                logging.debug("candidate conjugate poles: {} and {}, ws={}, fs={}, b={} (compare to {}-{})".format(p1,p2,omega_s,omega_s/(2*np.pi),-1*p1.real/omega_s,f_hp,f_lp))
                 break
 
     if len(fs_candidate) == 0:
@@ -65,10 +65,10 @@ def natural_frequency_and_damping(poles,f_hp,f_lp,sensor_type="VEL"):
     # pick the candidate that is close to a corner frequency
     # for velocity/displacement pick the one close to f_hp, acceleration close to f_lp
     if sensor_type == "VEL":
-        logging.info( ("BB/SP sensor_type: {}").format(sensor_type) )
+        logging.debug( ("BB/SP sensor_type: {}").format(sensor_type) )
         df = np.abs( np.subtract(fs_candidate, f_hp) ) 
     else:
-        logging.info( ("SM sensor_type: {}").format(sensor_type) )
+        logging.debug( ("SM sensor_type: {}").format(sensor_type) )
         df = np.abs( np.subtract(fs_candidate, f_lp) )
     i_min = np.argmin(df)
     fn = fs_candidate[i_min]
@@ -124,9 +124,9 @@ def simple_response(sample_rate,response):
     amplitude, frequency = paz_to_freq_resp(poles,zeros,normalization_factor,delta_t,2*NFREQ,freq=True)
 
     # determine the high and low frequency corners from the amplitude spectrum
-    logging.info("Determining frequency corners")
+    logging.debug("Determining frequency corners")
     f_hp, f_lp = compute_corners(amplitude,frequency)
-    logging.info( ("f_hp: {}, f_lp: {}").format(f_hp,f_lp) )
+    logging.debug( ("f_hp: {}, f_lp: {}").format(f_hp,f_lp) )
 
     # velocity transducer or acceleration?
     if signal_input_units == "M/S" or signal_input_units == "M":
@@ -135,9 +135,9 @@ def simple_response(sample_rate,response):
         sensor_type = "ACC"
 
     # try to determine natural frequency and damping factor from poles and corners
-    logging.info("Determining natural frequency and damping factor")
+    logging.debug("Determining natural frequency and damping factor")
     natural_frequency, damping = natural_frequency_and_damping(poles, f_hp, f_lp, sensor_type=sensor_type)
-    logging.info( ("fn: {}, damp: {}").format(natural_frequency, damping) )
+    logging.debug( ("fn: {}, damp: {}").format(natural_frequency, damping) )
     
     # some sanity checks, limit f_lp to 40% of Nyquist, f_hp must be <= f_lp
     if f_lp > 0.4*sample_rate:
