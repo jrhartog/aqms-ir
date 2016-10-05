@@ -158,7 +158,7 @@ def _remove_channel(session, network_code, station_code, channel):
     status = 0
     try:
         status = session.query(Channel).filter_by(net=network_code,sta=station_code \
-                 ,seedchan=channel.code,location=channel.location_code).delete()
+                 ,seedchan=channel.code,location=fix(channel.location_code)).delete()
     except Exception as e:
         logging.error("remove_channel: {}".format(e))
 
@@ -179,7 +179,7 @@ def _remove_simple_response(session, network_code, station_code, channel_code, l
 
     try:
         status = session.query(SimpleResponse).filter_by(net=network_code,sta=station_code \
-                 ,seedchan=channel_code,location=location_code).delete()
+                 ,seedchan=channel_code,location=fix(location_code)).delete()
     except Exception as e:
         logging.error("remove_simple_response: {}".format(e))
 
@@ -245,7 +245,7 @@ def _channel2db(session, network_code, station_code, channel):
         # if removed > 0:
         #     logging.info("Removed {} epochs for channel {}.{}.{}.{}\n".format(removed,network_code, station_code, channel.code, channel.location_code))
         # create the new entry
-    db_channel = Channel(net=network_code, sta=station_code, seedchan=channel.code, location=channel.location_code, ondate=channel.start_date.datetime)
+    db_channel = Channel(net=network_code, sta=station_code, seedchan=channel.code, location=fix(channel.location_code), ondate=channel.start_date.datetime)
     session.add(db_channel)
             
 
@@ -305,7 +305,7 @@ def _simple_response2db(session,network_code,station_code,channel):
     fn, damping, lowest_freq, highest_freq, gain = simple_response(channel.sample_rate,channel.response)
 
     db_simple_response = SimpleResponse(net=network_code, sta=station_code, \
-                         seedchan=channel.code, location=channel.location_code, \
+                         seedchan=channel.code, location=fix(channel.location_code), \
                          ondate=channel.start_date.datetime)
 
     session.add(db_simple_response)
@@ -325,3 +325,9 @@ def _simple_response2db(session,network_code,station_code,channel):
         logging.error("Unable to add simple_response {} to db".format(db_simple_response,e))
 
     return
+
+def fix(location):
+    if location == "":
+        return "  "
+    else:
+        return location
