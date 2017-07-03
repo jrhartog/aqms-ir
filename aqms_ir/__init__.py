@@ -4,4 +4,6 @@
     for a full description of the AQMS Instrument Response schema, see http://www.ncedc.org/db
     Note: this, so far, has only been tested on a PostgreSQL database with the tables Station_Data, Channel_Data, and Instrument Response
     Use at your own risk!
+    
+    Copyright 2017 Renate Hartog
 """
