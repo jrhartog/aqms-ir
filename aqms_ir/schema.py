@@ -128,3 +128,45 @@ class SimpleResponse(Base):
                 format(self.net, self.sta, self.seedchan, self.location, self.ondate, \
                 self.offdate, self.gain, self.gain_units, self.low_freq_corner, self.high_freq_corner, \
                 self.natural_frequency, self.damping_constant)
+
+class AmpParms(Base):
+    __tablename__ = "channelmap_ampparms"
+
+    net = Column('net', String(8), primary_key=True, nullable=False)
+    sta = Column('sta', String(6), primary_key=True, nullable=False)
+    seedchan = Column('seedchan', String(3), primary_key=True, nullable=False)
+    location = Column('location', String(2), primary_key=True, nullable=False)
+    ondate = Column('ondate', DateTime, primary_key=True, nullable=False)
+    offdate = Column('offdate', DateTime, default=datetime.datetime(3000,1,1))
+    channel = Column('channel', String(8))
+    channelsrc = Column('channelsrc', String(8), default="SEED")
+    clip = Column('clip', Numeric)
+    lddate = Column('lddate', DateTime, server_default=text('NOW()'))
+
+    def __repr__(self):
+        return "AmpParms: net={}, sta={}, seedchan={}, location={}, ondate={}, \
+                offdate={}, clip={}".\
+                format(self.net, self.sta, self.seedchan, self.location, self.ondate, \
+                self.offdate, self.clip)
+
+class CodaParms(Base):
+    __tablename__ = "channelmap_codaparms"
+
+    net = Column('net', String(8), primary_key=True, nullable=False)
+    sta = Column('sta', String(6), primary_key=True, nullable=False)
+    seedchan = Column('seedchan', String(3), primary_key=True, nullable=False)
+    location = Column('location', String(2), primary_key=True, nullable=False)
+    ondate = Column('ondate', DateTime, primary_key=True, nullable=False)
+    offdate = Column('offdate', DateTime, default=datetime.datetime(3000,1,1))
+    channel = Column('channel', String(8))
+    channelsrc = Column('channelsrc', String(8), default="SEED")
+    cutoff = Column('cutoff', Numeric)
+    gain_corr = Column('gain_corr', Numeric)
+    summary_wt = Column('summary_wt', Numeric)
+    lddate = Column('lddate', DateTime, server_default=text('NOW()'))
+
+    def __repr__(self):
+        return "CodaParms: net={}, sta={}, seedchan={}, location={}, ondate={}, \
+                offdate={}, cutoff={}, gain_corr={}, summary_wt={}".\
+                format(self.net, self.sta, self.seedchan, self.location, self.ondate, \
+                self.offdate, self.cutoff, self.gain_corr, self.summary_wt)

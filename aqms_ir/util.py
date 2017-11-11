@@ -146,3 +146,8 @@ def simple_response(sample_rate,response):
         f_hp = f_lp
 
     return natural_frequency, damping, f_hp, f_lp, total_gain
+
+def get_cliplevel(instrument_identifier, total_gain):
+    cliplevel = -1   
+    return cliplevel
+
