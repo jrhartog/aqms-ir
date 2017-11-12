@@ -1,7 +1,10 @@
 """ inventory is an obspy Inventory object """
 import logging
 
-from schema import Abbreviation, Format, Unit, Channel, Station, SimpleResponse
+from schema import Abbreviation, Format, Unit, Channel, Station, SimpleResponse, AmpParms, CodaParms
+
+# noise level in m/s used for determining cutoff level for Md
+CUTOFF_GM=1.7297e-7
 
 def inventory2db(session, inventory):
     if inventory.networks:
@@ -290,7 +293,7 @@ def _channels2db(session, network_code, station_code, channels):
 
 def _response2db(session, network_code, station_code, channel,fill_all=False):
 
-    # for now, only fill simple_response table
+    # for now, only fill simple_response, channelmap_ampparms and channelmap_codaparms tables
     _simple_response2db(session,network_code,station_code,channel)
 
     if fill_all:
@@ -300,7 +303,7 @@ def _response2db(session, network_code, station_code, channel,fill_all=False):
     return
 
 def _simple_response2db(session,network_code,station_code,channel):
-    from util import simple_response
+    from util import simple_response, parse_instrument_identifier, get_cliplevel
 
     fn, damping, lowest_freq, highest_freq, gain = simple_response(channel.sample_rate,channel.response)
 
@@ -321,8 +324,76 @@ def _simple_response2db(session,network_code,station_code,channel):
 
     try:
         session.commit()
+
+        # next fill channelmap_codaparms
+        db_codaparms = CodaParms(net=network_code, sta=station_code, \
+                       seedchan=channel.code, location=fix(channel.location_code), \
+                       ondate=channel.start_data.datetime)
+        session.add(db_codaparms)
+        db_codaparms.channel = channel.code
+        db_codaparms.cutoff = gain * CUTOFF_GM # cutoff in counts
+        db.codaparms.offdate = channel.end_date.datetime
+        try:
+            session.commit()
+
+            # next fill channelmap_ampparms
+            if network_code in ["UW", "CC", "UO", "HW"]:
+
+                # get sensor and logger info
+                if "=" in channel.sensor.description and "-" in channel.sensor.description:
+                    # PNSN instrument identifier
+                    sensor, sensor_sn, logger, logger_sn = parse_identifier(channel.sensor.description)
+                else:
+                    sensor = channel.sensor.type
+                    sensor_sn = channel.sensor.serial_number
+                    logger = channel.logger.type
+                    logger_sn = channel.logger.serial_number
+                try:
+                    clip = get_cliplevel(sensor,sensor_sn,logger,logger_sn)
+                except Exception as err:
+                    logging.error("Cannot determine cliplevel {}: {}".format(channel.sensor,err)
+
+
+            else:
+                # first see if there is something like 2g,3g,4g in instrument identifier
+                if "2g" in channel.sensor.description:
+                    clip = gain * 2 * 9.8
+                elif "4g" in channel.sensor.description:
+                    clip = gain * 4 * 9.8
+                elif "1g" in channel.sensor.description:
+                    clip = gain * 9.8
+                elif "3g" in channel.sensor.description:
+                    clip = gain * 3 * 9.8
+                elif channel.code[1] == "N" or channel.code[1] == "L":
+                    # strong-motion, assume 4g
+                    clip = gain * 4 * 9.8
+                elif channel.code[0:1] in ["EH", "SH"]:
+                    # short-period
+                    clip = gain * 0.0001
+                elif channel.code[0:1] in ["BH", "HH"]:
+                    # 1 cm/s
+                    clip = gain * 0.0100
+            
+            # have clip, fill channelmap_ampparms                
+            db_ampparms = AmpParms(net=network_code, sta=station_code, \
+                          seedchan=channel.code, location=fix(channel.location_code), \
+                          ondate=channel.start_data.datetime)
+
+            session.add(db_ampparms)
+            db_ampparms.channel = channel.code
+            db_ampparms.clip = clip
+            db_ampparms.offdate = channel.end_date.datetime
+            try:
+                session.commit()
+            except Exception as error:
+                logging.error("Unable to add ampparms {} to db: {}".format(db_ampparms,error))
+
+        except Exception as er:
+            logging.error("Unable to add codaparms {} to db: {}".format(db_codaparms,er))
+            raise
+ 
     except Exception as e:
-        logging.error("Unable to add simple_response {} to db".format(db_simple_response,e))
+        logging.error("Unable to add simple_response {} to db: {}".format(db_simple_response,e))
 
     return
 

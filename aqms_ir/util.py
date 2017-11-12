@@ -1,5 +1,6 @@
 import numpy as np
 import logging
+
 try:
     from obspy.signal.invsim import paz_to_freq_resp
 except:
@@ -147,7 +148,189 @@ def simple_response(sample_rate,response):
 
     return natural_frequency, damping, f_hp, f_lp, total_gain
 
-def get_cliplevel(instrument_identifier, total_gain):
+def get_cliplevel(sensor, sensor_sn, logger, logger_sn, total_gain):
+    """
+        Tries to determine the instrument cliplevel in counts based on
+        the sensor/logger combination. Sometimes the maximum number of counts
+        out is the maximum counts of the digitizer, sometimes, it is the
+        due to clipping of the sensor and sometimes those two quantities are 
+        the same (when max Volts out of the sensor matches the max Volts in 
+        of the logger).
+
+        @params[string]: sensor
+    """
+
     cliplevel = -1   
+
+    # loggers where all channels have the same cliplevel
+
+    # national instruments earthworm data loggers, use 2048
+    if "Wrm" in logger or "EARTHWORM NI" in logger or "LEGACY" in logger:
+        cliplevel = 2048
+
+    # community project earthworm digitizer, use 16384 except for Rim Village
+    elif "PSN" in logger:
+        if "rv" in logger:
+            cliplevel = 8192.
+        else:
+            cliplevel = 16384
+
+    # Cascades-16S with short-period, assume clipping is due to sensor, assume something small
+    elif "C16S" in logger or "CASCADES-16S" in logger:
+        cliplevel = gain * 0.0001
+        if cliplevel > 32768.:
+            cliplevel = 32768.
+
+    # NetQuakes are all set to 3g
+    elif "NQ" in logger or "NETQUAKE" in logger:
+        cliplevel = gain * 3 * 9.8
+
+    # IDS strong-motion were all 2g
+    elif "IDS" in logger: 
+        if "320" in sensor:
+            cliplevel = gain * 2 * 9.8
+        elif "G40T_60" in sensor or "CMG-40T" in sensor:
+            # 1.25 cm/s
+            cliplevel = gain * 0.0125
+        elif "PMD" in sensor:
+            # 0.65 cm/s (just a guess)
+            cliplevel = gain * 0.0065
+
+    # Our CMG-5TD packages were supposed to be 4g, but some were set to 8g
+    elif "G5TD" in logger or "CMG-5TD" in sensor:
+        cliplevel = gain * 4 * 9.8
+        if logger_sn in ["D838", "D833", "D820", "D826", "D817", "D825", "D810"]:
+            cliplevel = 2 * cliplevel
+
+    # CMG-6TD clips at 4.17 cm/s
+    elif "G6TD" in logger or "CMG-6T" in sensor:
+        cliplevel = gain * 0.00417
+
+    # Our Titans in TitanSMAs are all set to 4g
+    elif "TITAN" in logger:
+        cliplevel = gain * 4 * 9.8
+
+    # same with the ones inside the Trillium Cascadia
+    elif "CENT" in logger or "CENTAUR" in logger:
+        if "TITAN" in sensor:
+            cliplevel = gain * 4 * 9.8
+        elif "TRCOM" in sensor or "TRILLIUM COMPACT PH" in sensor:
+            # 2.6 cm/s
+            cliplevel = gain * 0.0260 
+
+    # ES-T attached to or inside K2s etc. were usually set to 2g with a few exceptions.
+    elif "K2" in logger or "Etna" in logger or "MAK" in logger or "GRAN" in logger:
+        if "ES" in sensor or "SBEPI" in sensor or "FBA23" in sensor or "EPISENSOR" in sensor or "FBA-23" in sensor:
+            cliplevel = gain * 2 * 9.8
+            if logger_sn == "2147":
+                cliplevel = 2*cliplevel
+        elif "L4" in sensor or "L4C" in sensor or "S13" in sensor or "L-4C" in sensor or "S-13" in sensor:
+            cliplevel = gain * 0.0001
+        elif "GEDU" in sensor or "CMG-EDU" in sensor:
+            cliplevel = gain * 0.00417 
+
+    # Old refteks
+    elif "72A" in logger:
+        if "ES" in sensor or "EPISENSOR" in sensor:
+            cliplevel = gain * 2 * 9.8
+        elif "FBA" in sensor:
+            cliplevel = gain * 1 * 9.8
+        elif "L22" in sensor:
+            cliplevel = gain * 0.0001
+        elif "G40T_60" in sensor or "CMG-40T" in sensor:
+            cliplevel = 0.0125
+        elif "G3TNSN" in sensor or "CMG-3T/NSN" in sensor:
+            cliplevel = 0.0067
+        elif "G3T" in sensor or "CMG-3T" in sensor or "GT3134" in sensor:
+            cliplevel = 0.0067
+
+    # ES-T attached to Q330s tend to be set to 4g, except in Oregon
+    elif "Q330" in logger:
+        if "ES" in sensor or "EPISENSOR" in sensor:
+            cliplevel = gain * 4 * 9.8
+            # these formerly TA now UO Episensors have clip levels set to 2g
+            if sensor_sn in ["3818", "3823", "3824", "3825", "3826", "3829", \
+                             "3831", "3832", "3833", "3834", "3838", "3841", \
+                             "4588", "4590", "7272"]: 
+                cliplevel = 0.5 * cliplevel
+       if "STS2" in sensor or "STS-2" in sensor:
+           # 1.25 cm/s
+           cliplevel = gain * 0.0125 
+       elif "G3T" in sensor or "CMG-3T" in sensor:
+           # 0.67 cm/s
+           cliplevel = gain * 0.0067
+       elif "TR240" in sensor or "TRILLIUM 240" in sensor:
+           # 1.50 cm/s
+           cliplevel = gain * 0.0150
+
+    # ES-T and RT147 attached to RT130 dataloggers are set to 4g.
+    elif "130" in logger:
+        if "ES" in sensor or "147" in sensor":
+            cliplevel = gain * 4 * 9.8
+        elif "L22" in sensor:
+            cliplevel = gain * 0.0001 
+        elif "TRCOM" in sensor or "TRILLIUM COMPACT" in sensor:
+            # 2.6 cm/s
+            cliplevel = gain * 0.026
+        elif "TR120" in sensor or "TRILLIUM 120"  in sensor or "TRIL" in sensor:
+            # 1.5 cm/s
+            cliplevel = gain * 0.015
+        elif "G3ESP" in sensor or "CMG-3ESP" in sensor:
+            # 0.5 cm/s
+            cliplevel = gain * 0.0050
+        elif "GT3134" in sensor or "CMG-3T" in sensor:
+            # 0.67 cm/s
+            cliplevel = gain * 0.0067
+
+
     return cliplevel
 
+def parse_instrument_identifier(description):
+    """
+        This method parses the Instrument Identifier (equipment) string and returns 4 strings.
+            sensor: PNSN calsta2 shorthand
+            sensor_sn: serial number
+            logger: PNSN calsta2 shorthand
+            logger_sn: serial number
+        our equipment strings look like sensor-serial=digitizer-serial
+        or sensor-serial=vco=disc=digitizer-serial, i.e. split on '=' and 
+        '-' characters. One exception: episensors are 'ES-T' thus include 
+        a '-' character.
+    """
+    if not description:
+        raise ValueError("function needs a description string")
+    if description.strip() == 'Mark L-4 1 Hz':
+        # generic,old, combined displacement response, do not create equipment, only subresponses
+        sensor = "OLD_SHORT_PERIOD"
+        sensor_sn = "XXXX"
+        logger = "LEGACY_ANALOG_DIGITIZER"
+        logger_sn = "XXXX"
+        return sensor, sensor_sn, logger, logger_sn
+
+    equiplist = description.split('=')
+    if len(equiplist) == 2:
+        # Two pieces of equipment, assume sensor and digitizer
+        dummylist = equiplist[0].split('-')
+        if len(dummylist) == 2:
+            sensor = dummylist[0]
+            sensor_sn = dummylist[1]
+        else:
+            # episensor is ES-T, i.e. equipment string has extra '-'
+            sensor = dummylist[0] + '_' + dummylist[1]
+            sensor_sn = dummylist[2]
+        logger, logger_sn = equiplist[1].split('-')
+    elif len(equiplist) == 4:
+        # Four pieces of equipment, assume analog station, sensor,vco,disc,digitizer
+        dummylist = equiplist[0].split('-')
+        if len(dummylist) == 2:
+            sensor = dummylist[0]
+            sensor_sn = dummylist[1]
+        else:
+            # episensor is ES-T, i.e. equipment string has extra '-'
+            sensor = dummylist[0] + '_' + dummylist[1]
+            sensor_sn = dummylist[2]
+        logger, logger_sn = equiplist[3].split('-')
+    else:
+        # Don't know what to do with this
+        raise ValueError("don't know how to parse this: "%description)
+    return sensor, sensor_sn, logger, logger_sn
