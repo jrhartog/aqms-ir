@@ -373,6 +373,9 @@ def _simple_response2db(session,network_code,station_code,channel):
                 sensor_sn = channel.sensor.serial_number
                 logger = channel.logger.type
                 logger_sn = channel.logger.serial_number
+
+            logging.info("{}-{}: channel equipment: {}-{}={}-{}".format(station_code,channel.code,sensor,sensor_sn,logger,logger_sn))
+
             try:
                 clip = get_cliplevel(sensor,sensor_sn,logger,logger_sn, gain)
             except Exception as err:
