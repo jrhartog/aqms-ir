@@ -344,6 +344,9 @@ def _simple_response2db(session,network_code,station_code,channel):
         session.add(db_codaparms)
         db_codaparms.channel = channel.code
         db_codaparms.cutoff = gain * CUTOFF_GM # cutoff in counts
+        # this is too low for strong-motion channels, multiply with 1000 to get something reasonable
+        if channel.code[1] == "N":
+            db_codaparms.cutoff = 1000.0 * db_codaparms.cutoff
         db_codaparms.offdate = channel.end_date.datetime
         try:
             session.commit()
