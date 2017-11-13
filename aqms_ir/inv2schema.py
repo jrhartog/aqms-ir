@@ -183,18 +183,20 @@ def _remove_simple_response(session, network_code, station_code, channel_code, l
     try:
         status = session.query(SimpleResponse).filter_by(net=network_code,sta=station_code \
                      ,seedchan=channel_code,location=fix(location_code)).delete()
-        try:
-            status = session.query(CodaParms).filter_by(net=network_code,sta=station_code \
-                     ,seedchan=channel_code,location=fix(location_code)).delete()
-        except Exception as er:
-            logging.error("remove_simple_response: {}".format(er))
-            try:
-                status = session.query(AmpParms).filter_by(net=network_code,sta=station_code \
-                         ,seedchan=channel_code,location=fix(location_code)).delete()
-            except Exception as er:
-                logging.error("remove_simple_response: {}".format(er))
     except Exception as e:
         logging.error("remove_simple_response: {}".format(e))
+
+    try:
+        status = session.query(CodaParms).filter_by(net=network_code,sta=station_code \
+                 ,seedchan=channel_code,location=fix(location_code)).delete()
+    except Exception as er:
+        logging.error("remove_simple_response, codaparms: {}".format(er))
+
+    try:
+        status = session.query(AmpParms).filter_by(net=network_code,sta=station_code \
+                 ,seedchan=channel_code,location=fix(location_code)).delete()
+    except Exception as error:
+        logging.error("remove_simple_response,ampparms: {}".format(error))
 
     return status
 
