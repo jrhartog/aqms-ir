@@ -148,7 +148,7 @@ def simple_response(sample_rate,response):
 
     return natural_frequency, damping, f_hp, f_lp, total_gain
 
-def get_cliplevel(sensor, sensor_sn, logger, logger_sn, total_gain):
+def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
     """
         Tries to determine the instrument cliplevel in counts based on
         the sensor/logger combination. Sometimes the maximum number of counts
