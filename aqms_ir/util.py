@@ -229,6 +229,16 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
         elif "GEDU" in sensor or "CMG-EDU" in sensor:
             cliplevel = gain * 0.00417 
 
+    # ES-T attached to or inside Basalts/Obsidians were usually set to 4g with a few exceptions.
+    elif "ROCK" in logger or "OBSID" in logger or "BASALT":
+        if "ES" in sensor:
+            cliplevel = gain * 4 * 9.8
+            if logger_sn in ["1597", "1598", "1599", "1600", "1601"]:
+                # hanford loggers with internal Episensors set to 2g
+                cliplevel = 0.5*cliplevel
+        elif "L4" in sensor or "L4C" in sensor or "S13" in sensor or "L-4C" in sensor or "S-13" in sensor:
+            cliplevel = gain * 0.0001
+
     # Old refteks
     elif "72A" in logger:
         if "ES" in sensor or "EPISENSOR" in sensor:
