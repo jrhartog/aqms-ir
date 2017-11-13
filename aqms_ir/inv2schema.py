@@ -336,8 +336,13 @@ def _simple_response2db(session,network_code,station_code,channel):
 
     try:
         session.commit()
+    except Exception as e:
+        logging.error("Unable to add simple_response {} to db: {}".format(db_simple_response,e))
 
-        # next fill channelmap_codaparms
+    # next fill channelmap_codaparms (only for seismic channels, verticals)
+    if channel.response.instrument_sensitivity.input_units in \
+        ['M/S','CM/S','M/S**2', 'CM/S**2'] and channel.dip != 0.0:
+
         db_codaparms = CodaParms(net=network_code, sta=station_code, \
                        seedchan=channel.code, location=fix(channel.location_code), \
                        ondate=channel.start_date.datetime)
@@ -350,66 +355,62 @@ def _simple_response2db(session,network_code,station_code,channel):
         db_codaparms.offdate = channel.end_date.datetime
         try:
             session.commit()
-
-            # next fill channelmap_ampparms
-            if network_code in ["UW", "CC", "UO", "HW"]:
-
-                # get sensor and logger info
-                if "=" in channel.sensor.description and "-" in channel.sensor.description:
-                    # PNSN instrument identifier
-                    sensor, sensor_sn, logger, logger_sn = parse_instrument_identifier(channel.sensor.description)
-                else:
-                    sensor = channel.sensor.type
-                    sensor_sn = channel.sensor.serial_number
-                    logger = channel.logger.type
-                    logger_sn = channel.logger.serial_number
-                try:
-                    clip = get_cliplevel(sensor,sensor_sn,logger,logger_sn, gain)
-                except Exception as err:
-                    logging.error("Cannot determine cliplevel {}: {}".format(channel.sensor,err))
-
-
-            else:
-                # first see if there is something like 2g,3g,4g in instrument identifier
-                if "2g" in channel.sensor.description:
-                    clip = gain * 2 * 9.8
-                elif "4g" in channel.sensor.description:
-                    clip = gain * 4 * 9.8
-                elif "1g" in channel.sensor.description:
-                    clip = gain * 9.8
-                elif "3g" in channel.sensor.description:
-                    clip = gain * 3 * 9.8
-                elif channel.code[1] == "N" or channel.code[1] == "L":
-                    # strong-motion, assume 4g
-                    clip = gain * 4 * 9.8
-                elif channel.code[0:1] in ["EH", "SH"]:
-                    # short-period
-                    clip = gain * 0.0001
-                elif channel.code[0:1] in ["BH", "HH"]:
-                    # 1 cm/s
-                    clip = gain * 0.0100
-            
-            # have clip, fill channelmap_ampparms                
-            db_ampparms = AmpParms(net=network_code, sta=station_code, \
-                          seedchan=channel.code, location=fix(channel.location_code), \
-                          ondate=channel.start_date.datetime)
-
-            session.add(db_ampparms)
-            db_ampparms.channel = channel.code
-            db_ampparms.clip = clip
-            db_ampparms.offdate = channel.end_date.datetime
-            try:
-                session.commit()
-            except Exception as error:
-                logging.error("Unable to add ampparms {} to db: {}".format(db_ampparms,error))
-                raise
-
         except Exception as er:
             logging.error("Unable to add codaparms {} to db: {}".format(db_codaparms,er))
-            raise
- 
-    except Exception as e:
-        logging.error("Unable to add simple_response {} to db: {}".format(db_simple_response,e))
+
+    # next fill channelmap_ampparms, for seismic channels only, all components
+    if channel.response.instrument_sensitivity.input_units in \
+        ['M/S','CM/S','M/S**2', 'CM/S**2']:
+
+        if network_code in ["UW", "CC", "UO", "HW"]:
+
+            # get sensor and logger info
+            if "=" in channel.sensor.description and "-" in channel.sensor.description:
+                # PNSN instrument identifier
+                sensor, sensor_sn, logger, logger_sn = parse_instrument_identifier(channel.sensor.description)
+            else:
+                sensor = channel.sensor.type
+                sensor_sn = channel.sensor.serial_number
+                logger = channel.logger.type
+                logger_sn = channel.logger.serial_number
+            try:
+                clip = get_cliplevel(sensor,sensor_sn,logger,logger_sn, gain)
+            except Exception as err:
+                logging.error("Cannot determine cliplevel {}: {}".format(channel.sensor,err))
+
+        else:
+            # first see if there is something like 2g,3g,4g in instrument identifier
+            if "2g" in channel.sensor.description:
+                clip = gain * 2 * 9.8
+            elif "4g" in channel.sensor.description:
+                clip = gain * 4 * 9.8
+            elif "1g" in channel.sensor.description:
+                clip = gain * 9.8
+            elif "3g" in channel.sensor.description:
+                clip = gain * 3 * 9.8
+            elif channel.code[1] == "N" or channel.code[1] == "L":
+                # strong-motion, assume 4g
+                clip = gain * 4 * 9.8
+            elif channel.code[0:1] in ["EH", "SH"]:
+                # short-period
+                clip = gain * 0.0001
+            elif channel.code[0:1] in ["BH", "HH"]:
+                # 1 cm/s
+                clip = gain * 0.0100
+        
+        # have clip, fill channelmap_ampparms                
+        db_ampparms = AmpParms(net=network_code, sta=station_code, \
+                      seedchan=channel.code, location=fix(channel.location_code), \
+                      ondate=channel.start_date.datetime)
+
+        session.add(db_ampparms)
+        db_ampparms.channel = channel.code
+        db_ampparms.clip = clip
+        db_ampparms.offdate = channel.end_date.datetime
+        try:
+            session.commit()
+        except Exception as error:
+            logging.error("Unable to add ampparms {} to db: {}".format(db_ampparms,error))
 
     return
 
