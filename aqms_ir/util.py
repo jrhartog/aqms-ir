@@ -253,15 +253,15 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, total_gain):
                              "3831", "3832", "3833", "3834", "3838", "3841", \
                              "4588", "4590", "7272"]: 
                 cliplevel = 0.5 * cliplevel
-       if "STS2" in sensor or "STS-2" in sensor:
-           # 1.25 cm/s
-           cliplevel = gain * 0.0125 
-       elif "G3T" in sensor or "CMG-3T" in sensor:
-           # 0.67 cm/s
-           cliplevel = gain * 0.0067
-       elif "TR240" in sensor or "TRILLIUM 240" in sensor:
-           # 1.50 cm/s
-           cliplevel = gain * 0.0150
+        if "STS2" in sensor or "STS-2" in sensor:
+            # 1.25 cm/s
+            cliplevel = gain * 0.0125 
+        elif "G3T" in sensor or "CMG-3T" in sensor:
+            # 0.67 cm/s
+            cliplevel = gain * 0.0067
+        elif "TR240" in sensor or "TRILLIUM 240" in sensor:
+            # 1.50 cm/s
+            cliplevel = gain * 0.0150
 
     # ES-T and RT147 attached to RT130 dataloggers are set to 4g.
     elif "130" in logger:
