@@ -265,7 +265,7 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, total_gain):
 
     # ES-T and RT147 attached to RT130 dataloggers are set to 4g.
     elif "130" in logger:
-        if "ES" in sensor or "147" in sensor":
+        if "ES" in sensor or "147" in sensor:
             cliplevel = gain * 4 * 9.8
         elif "L22" in sensor:
             cliplevel = gain * 0.0001 
