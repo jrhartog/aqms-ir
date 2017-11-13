@@ -244,7 +244,7 @@ def _channel2db(session, network_code, station_code, channel):
     #except Exception as e:
         #logging.info("Channel not in db: {}".format(e))
         # check to see if there are other epochs for this channel, if so, delete them. Too difficult to figure out what user wants to do (insert, replace, etc.)
-        # removed = session.query(Channel).filter(net=network_code, sta=station_code, seedchan=channel.code, location=channel.location_code, ondate != channel.start_data.datetime).delete()
+        # removed = session.query(Channel).filter(net=network_code, sta=station_code, seedchan=channel.code, location=channel.location_code, ondate != channel.start_date.datetime).delete()
         # if removed > 0:
         #     logging.info("Removed {} epochs for channel {}.{}.{}.{}\n".format(removed,network_code, station_code, channel.code, channel.location_code))
         # create the new entry
@@ -328,7 +328,7 @@ def _simple_response2db(session,network_code,station_code,channel):
         # next fill channelmap_codaparms
         db_codaparms = CodaParms(net=network_code, sta=station_code, \
                        seedchan=channel.code, location=fix(channel.location_code), \
-                       ondate=channel.start_data.datetime)
+                       ondate=channel.start_date.datetime)
         session.add(db_codaparms)
         db_codaparms.channel = channel.code
         db_codaparms.cutoff = gain * CUTOFF_GM # cutoff in counts
@@ -377,7 +377,7 @@ def _simple_response2db(session,network_code,station_code,channel):
             # have clip, fill channelmap_ampparms                
             db_ampparms = AmpParms(net=network_code, sta=station_code, \
                           seedchan=channel.code, location=fix(channel.location_code), \
-                          ondate=channel.start_data.datetime)
+                          ondate=channel.start_date.datetime)
 
             session.add(db_ampparms)
             db_ampparms.channel = channel.code
