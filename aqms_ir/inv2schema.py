@@ -351,7 +351,7 @@ def _simple_response2db(session,network_code,station_code,channel):
                 try:
                     clip = get_cliplevel(sensor,sensor_sn,logger,logger_sn)
                 except Exception as err:
-                    logging.error("Cannot determine cliplevel {}: {}".format(channel.sensor,err)
+                    logging.error("Cannot determine cliplevel {}: {}".format(channel.sensor,err))
 
 
             else:
