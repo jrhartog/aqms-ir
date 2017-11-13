@@ -332,7 +332,7 @@ def _simple_response2db(session,network_code,station_code,channel):
         session.add(db_codaparms)
         db_codaparms.channel = channel.code
         db_codaparms.cutoff = gain * CUTOFF_GM # cutoff in counts
-        db.codaparms.offdate = channel.end_date.datetime
+        db_codaparms.offdate = channel.end_date.datetime
         try:
             session.commit()
 
@@ -342,7 +342,7 @@ def _simple_response2db(session,network_code,station_code,channel):
                 # get sensor and logger info
                 if "=" in channel.sensor.description and "-" in channel.sensor.description:
                     # PNSN instrument identifier
-                    sensor, sensor_sn, logger, logger_sn = parse_identifier(channel.sensor.description)
+                    sensor, sensor_sn, logger, logger_sn = parse_instrument_identifier(channel.sensor.description)
                 else:
                     sensor = channel.sensor.type
                     sensor_sn = channel.sensor.serial_number
@@ -387,6 +387,7 @@ def _simple_response2db(session,network_code,station_code,channel):
                 session.commit()
             except Exception as error:
                 logging.error("Unable to add ampparms {} to db: {}".format(db_ampparms,error))
+                raise
 
         except Exception as er:
             logging.error("Unable to add codaparms {} to db: {}".format(db_codaparms,er))
