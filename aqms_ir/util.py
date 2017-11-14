@@ -329,10 +329,10 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
         if "STS2" in sensor or "STS-2" in sensor:
             # 1.25 cm/s
             cliplevel = gain * 0.0125 
-        elif "G3T" in sensor or "CMG-3T" in sensor:
+        if "G3T" in sensor or "CMG-3T" in sensor:
             # 0.67 cm/s
             cliplevel = gain * 0.0067
-        elif "TR240" in sensor or "TRILLIUM 240" in sensor:
+        if "TR240" in sensor or "TRILLIUM 240" in sensor:
             # 1.50 cm/s
             cliplevel = gain * 0.0150
 
