@@ -381,7 +381,7 @@ def parse_instrument_identifier(description):
             sensor = dummylist[0] + '_' + dummylist[1]
             sensor_sn = dummylist[2]
         logger, logger_sn = equiplist[3].split('-')
-    elif len(equipmentlist) == 1:
+    elif len(equiplist) == 1:
         dummylist = equiplist[0].split(",")
         if len(dummylist) == 3:
             #likely to be a SIS FDSN StationXML --> dataless --> IRIS FDSN StationXML conversion
