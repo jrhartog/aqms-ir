@@ -21,7 +21,8 @@ def _networks2db(session, networks):
 def _network2db(session, network):
     net_id = None
     if network.stations:
-        _stations2db(session,network)
+        success,failed = _stations2db(session,network)
+        logging.info("\n Success: {} stations, failure: {} stations.\n".format(success,failed))
     else:
         # only insert an entry into D_Abbreviation
         net_id = _get_net_id(session, network)
@@ -233,13 +234,17 @@ def _station2db(session, network, station):
     return
 
 def _stations2db(session, network):
+    success = 0
+    failed = 0
     for station in network.stations:
         try:
              _station2db(session, network, station)
+             success = success + 1
         except Exception as e:
             logging.error("Unable to add station {} to db: {}".format(station.code, e))
+            failed = failed + 1
             continue
-    return
+    return success, failed
 
 def _channel2db(session, network_code, station_code, channel):
 
