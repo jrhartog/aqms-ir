@@ -162,7 +162,48 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
 
     cliplevel = -1   
 
-    # loggers where all channels have the same cliplevel
+    if sensor and not logger:
+        # do not have any info about logger, this can happen, for example:
+        # SIS dataless instrument identifier is sensor_model,sensor_description,sensor_type
+        # let's assume this is the provenance of the StationXML (SIS dataless->IRIS->stationXML)
+        if "320" in sensor:
+            # IDS packages, were 2g
+            cliplevel = gain * 2 * 9.8
+        elif "CMG-5TD" in sensor:
+            # 4g, except for a few, but can't tell.
+            cliplevel = gain * 4 * 9.8
+        elif "EPISENSOR DECK" in sensor:
+            # most internal episensors of our were set to 2g
+            cliplevel = gain * 2 * 9.8
+        elif "EPISENSOR" in sensor:
+            # assume the rest is 4g
+            cliplevel = gain * 4 * 9.8
+        elif "TITAN" in sensor:
+            cliplevel = gain * 4 * 9.8
+        elif "FBA" in sensor:
+            cliplevel = gain * 9.8
+        elif "CMG-40T" in sensor:
+            # 1.25 cm/s
+            cliplevel = gain * 0.0125
+        elif "CMG-3T" in sensor:
+            # 0.67 cm/s
+            cliplevel = gain * 0.0067
+        elif "CMG-3ESP" in sensor:
+            # 0.50 cm/s
+            cliplevel = gain * 0.0050
+        elif "TRILLIUM COMPACT" in sensor:
+            # 2.6 cm/s
+            cliplevel = gain * 0.0260
+        elif "TRILLIUM" in sensor:
+            # 1.25 cm/s
+            cliplevel = gain * 0.0125
+        elif "STS-2" in sensor:
+            cliplevel = gain * 0.0120
+        elif "CMG-6T" in sensor or "CMG-EDU" in sensor:
+            cliplevel = gain * 0.00417
+        return cliplevel
+
+    # when we do have logger model name, do the following logic:
 
     # national instruments earthworm data loggers, use 2048
     if "Wrm" in logger or "EARTHWORM NI" in logger or "LEGACY" in logger:
@@ -340,6 +381,14 @@ def parse_instrument_identifier(description):
             sensor = dummylist[0] + '_' + dummylist[1]
             sensor_sn = dummylist[2]
         logger, logger_sn = equiplist[3].split('-')
+    elif len(equipmentlist) == 1:
+        dummylist = equiplist[0].split(",")
+        if len(dummylist) == 3:
+            #likely to be a SIS FDSN StationXML --> dataless --> IRIS FDSN StationXML conversion
+            sensor = dummylist[0]
+            sensor_sn = "XXXX"
+            logger = None
+            logger_sn = None
     else:
         # Don't know what to do with this
         raise ValueError("don't know how to parse this: "%description)
