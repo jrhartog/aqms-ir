@@ -461,21 +461,21 @@ def fix(location):
     else:
         return location
 
-def print_metrics():
+def print_metrics(bad_only=True):
     for k,v in commit_metrics.iteritems():
-        print_metric(k,v)
+        if len(v) > 0:
+            if bad_only and "bad" in k:
+                print_metric(k,v)
+            elif not bad_only:
+                print_metric(k,v)
     return
 
 def print_metric(key, values):
 
-    # don't print anything if there are zero of this metric
-    if len(values) == 0:
-        return
-
     indent = "    "
     print("{}\n:".format(key))
     for v in values:
-        print("{}{}\n".format(indent,v))
+        print("{}{}".format(indent,v))
     return
     
      
