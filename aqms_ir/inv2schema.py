@@ -372,6 +372,9 @@ def _simple_response2db(session,network_code,station_code,channel):
             if "=" in channel.sensor.description and "-" in channel.sensor.description:
                 # PNSN instrument identifier
                 sensor, sensor_sn, logger, logger_sn = parse_instrument_identifier(channel.sensor.description)
+            elif len(channel.sensor.description.split(",")) == 3:
+                # possibly instrument identifier from SIS dataless->IRIS->StationXML
+                sensor, sensor_sn, logger, logger_sn = parse_instrument_identifier(channel.sensor.description)
             else:
                 sensor = channel.sensor.type
                 sensor_sn = channel.sensor.serial_number
