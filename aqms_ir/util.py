@@ -11,6 +11,17 @@ except:
     from obspy.signal.invsim import paz2AmpValueOfFreqResp as paz_2_amplitude_value_of_freq_resp
 
 def compute_corners(amplitude,frequency):
+    """
+        :param amplitude: amplitude spectrum of time series
+        :type amplitude: array of floats
+        :param frequency: frequency values of amplitude spectrum
+        :type frequency: array of floats
+        :returns: high-pass and low-pass cutoff frequency (floats)
+        :raises: ValueError
+    """
+    # check to see amplitude and frequency arrays have the same length
+    if len(amplitude) != len(frequency):
+        raise ValueError("input arrays are not the same length")
     
     CONST = 1.0/np.sqrt(2.0)
     f_hp = 0
@@ -43,6 +54,17 @@ def compute_corners(amplitude,frequency):
     return f_hp, f_lp
 
 def natural_frequency_and_damping(poles,f_hp,f_lp,sensor_type="VEL"):
+    """
+        :param poles: complex conjugate poles, conjugate pair assumed to be sequential
+        :type poles: array of floats
+        :param f_hp: high-pass cutof frequency in Hz
+        :type f_hp: float
+        :param f_lp: high-pass cutof frequency in Hz
+        :type f_lp: float
+        :param sensor_type:VEL,ACC, default=VEL
+        :type sensor_type: string
+        :returns: natural frequency and damping factor (floats)
+    """
 
     # find any complex conjugate pole pairs, to find candidate fs and damp
     fs_candidate = []

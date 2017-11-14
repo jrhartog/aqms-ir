@@ -5,6 +5,20 @@ from schema import Abbreviation, Format, Unit, Channel, Station, SimpleResponse,
 
 # noise level in m/s used for determining cutoff level for Md
 CUTOFF_GM=1.7297e-7
+# keep track of successful and failed commits
+commit_metrics = {
+                 "stations_good" : [],
+                 "stations_bad"  : [],
+                 "channels_good" : [],
+                 "channels_bad"  : [],
+                 "response_good" : [],
+                 "response_bad"  : [],
+                 "codaparms_good": [],
+                 "codaparms_bad" : [],
+                 "ampparms_good" : [],
+                 "ampparms_bad"  : [],
+                 "clip_bad"      : []
+                  }
 
 def inventory2db(session, inventory):
     if inventory.networks:
@@ -225,8 +239,10 @@ def _station2db(session, network, station):
 
     try:
         session.commit()
+        commit_metrics["stations_good"].append(station_code)
     except Exception as e:
         logging.error("Cannot save station_data: {}".format(e))
+        commit_metrics["stations_bad"].append(station_code)
         
 
     if station.channels:
@@ -287,8 +303,10 @@ def _channel2db(session, network_code, station_code, channel):
 
     try:
         session.commit()
+        commit_metrics["channels_good"].append(station_code + "." + channel.code)
     except Exception as e:
         logging.error("Cannot save to channel_data: {}".format(e))
+        commit_metrics["channels_bad"].append(station_code + "." + channel.code)
 
     if channel.response:
         try:
@@ -345,8 +363,10 @@ def _simple_response2db(session,network_code,station_code,channel):
 
     try:
         session.commit()
+        commit_metrics["response_good"].append(station_code + "." + channel.code)
     except Exception as e:
         logging.error("Unable to add simple_response {} to db: {}".format(db_simple_response,e))
+        commit_metrics["response_bad"].append(station_code + "." + channel.code)
 
     # next fill channelmap_codaparms (only for seismic channels, verticals)
     if channel.response.instrument_sensitivity.input_units in \
@@ -364,8 +384,10 @@ def _simple_response2db(session,network_code,station_code,channel):
         db_codaparms.offdate = channel.end_date.datetime
         try:
             session.commit()
+            commit_metrics["codaparms_good"].append(station_code + "." + channel.code)
         except Exception as er:
             logging.error("Unable to add codaparms {} to db: {}".format(db_codaparms,er))
+            commit_metrics["codaparms_bad"].append(station_code + "." + channel.code)
 
     # next fill channelmap_ampparms, for seismic channels only, all components
     if channel.response.instrument_sensitivity.input_units in \
@@ -422,10 +444,14 @@ def _simple_response2db(session,network_code,station_code,channel):
         db_ampparms.channel = channel.code
         db_ampparms.clip = clip
         db_ampparms.offdate = channel.end_date.datetime
+        if clip == -1:
+            commit_metrics["clip_bad"].append(station_code + "." + channel.code)
         try:
             session.commit()
+            commit_metrics["ampparms_good"].append(station_code + "." + channel.code)
         except Exception as error:
             logging.error("Unable to add ampparms {} to db: {}".format(db_ampparms,error))
+            commit_metrics["ampparms_bad"].append(station_code + "." + channel.code)
 
     return
 
@@ -434,3 +460,23 @@ def fix(location):
         return "  "
     else:
         return location
+
+def print_metrics():
+    for k,v in commit_metrics.iteritems():
+        print_metric(k,v)
+    return
+
+def print_metric(key, values):
+
+    # don't print anything if there are zero of this metric
+    if len(values) == 0:
+        return
+
+    indent = "    "
+    print("{}\n:".format(key))
+    for v in values:
+        print("{}{}\n".format(indent,v))
+    return
+    
+     
+    
