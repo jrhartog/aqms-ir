@@ -5,7 +5,11 @@ from collections import OrderedDict
 from schema import Abbreviation, Format, Unit, Channel, Station, SimpleResponse, AmpParms, CodaParms
 
 # noise level in m/s used for determining cutoff level for Md
-CUTOFF_GM=1.7297e-7
+CUTOFF_GM = 1.7297e-7
+
+# units for seismic channels
+SEISMIC_UNITS = ['M/S', 'M/S**2', 'M/S/S', 'CM/S', 'CM/S**2', 'CM/S/S', 'M', 'CM']
+
 # keep track of successful and failed commits
 commit_metrics = OrderedDict()
 commit_metrics["stations_good"] = []
@@ -339,7 +343,7 @@ def _simple_response2db(session,network_code,station_code,channel):
         return
 
     if not hasattr(channel.response.instrument_sensitivity,"input_units") or \
-           channel.response.instrument_sensitivity.input_units not in ['M/S', 'M/S**2', 'CM/S', 'CM/S**2', 'M', 'CM']:
+           channel.response.instrument_sensitivity.input_units not in SEISMIC_UNITS:
         logging.warning("{}-{} is not a seismic component, no response".format(station_code,channel.code))
         return
 
