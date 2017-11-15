@@ -43,8 +43,23 @@ if __name__ == "__main__":
     # optional argument
     help_text = "Be more verbose in logfile"
     parser.add_argument("-v","--verbose",help=help_text,action="store_true")
+    help_text = "Specify a station code, wildcards are allowed"
+    parser.add_argument("-s","--station",help=help_text)
+    help_text = "Specify a channel code, wildcards are allowed"
+    parser.add_argument("-c","--channel",help=help_text)
+    help_text = "Specify a location code, wildcards are allowed"
+    parser.add_argument("-l","--location",help=help_text)
 
     args = parser.parse_args()
+
+    # possible keyword arguments to use in select
+    kwargs = {}
+    if args.station:
+        kwargs["station"] = args.station
+    if args.channel:
+        kwargs["channel"] = args.channel
+    if args.location:
+        kwargs["location"] = args.location
 
     logging.basicConfig(filename="inventory2aqms.log", level=logging.DEBUG)
     if args.verbose:
@@ -55,7 +70,12 @@ if __name__ == "__main__":
     # This command will create the database tables if they do not exist yet.
     Base.metadata.create_all(engine)
 
-    inv = read_inventory(args.xmlfile, format="STATIONXML")
+    tmpinv = read_inventory(args.xmlfile, format="STATIONXML")
+    if len(kwargs) > 0:
+        logging.debug("select parameters: {}".format(kwargs))
+        inv = tmpinv.select(**kwargs)
+    else:
+        inv = tmpinv
 
     session = Session()
     inventory2db(session,inv)
