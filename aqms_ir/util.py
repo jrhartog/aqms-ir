@@ -231,7 +231,7 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
     logging.debug("have sensor and logger: {},{},{},{}\n".format(sensor, sensor_sn, logger, logger_sn))
 
     # national instruments earthworm data loggers, use 2048
-    if "Wrm" in logger or "EARTHWORM NI" in logger or "LEGACY" in logger:
+    if "Wrm" in logger or "Gusan" in logger or "EARTHWORM NI" in logger or "LEGACY" in logger:
         cliplevel = 2048
         logging.debug("EW logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
