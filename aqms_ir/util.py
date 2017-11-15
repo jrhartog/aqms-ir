@@ -231,7 +231,8 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
     logging.debug("have sensor and logger: {},{},{},{}\n".format(sensor, sensor_sn, logger, logger_sn))
 
     # national instruments earthworm data loggers, use 2048
-    if "Wrm" in logger or "Gusan" in logger or "Ralph" in logger or "EARTHWORM NI" in logger or "LEGACY" in logger:
+    if "Wrm" in logger or "Gusan" in logger or "Ralph" in logger or \
+       "Analog-Tape" in logger or "EARTHWORM NI" in logger or "LEGACY" in logger:
         cliplevel = 2048
         logging.debug("EW logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
@@ -242,6 +243,11 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
         else:
             cliplevel = 16384
         logging.debug("PSN logger: {}, cliplevel: {}\n".format(logger,cliplevel))
+
+    # Gener datalogger, something digital, with a broadband attached probably
+    elif "Gener" in logger:
+        cliplevel = gain * 0.0065
+        logging.debug("Gener logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     # Cascades-16S with short-period, assume clipping is due to sensor, assume something small
     elif "C16S" in logger or "CASCADES-16S" in logger:
@@ -279,6 +285,11 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
         cliplevel = gain * 0.00417
         logging.debug("G6TD logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
+    # CMG-EDU like 6TD clips at 4.17 cm/s
+    elif "GEDU" in logger or "CMG-EDU" in sensor:
+        cliplevel = gain * 0.00417
+        logging.debug("GEDU logger: {}, cliplevel: {}\n".format(logger,cliplevel))
+
     # Our Titans in TitanSMAs are all set to 4g
     elif "TITAN" in logger:
         cliplevel = gain * 4 * 9.8
@@ -303,6 +314,9 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
             cliplevel = gain * 0.0001
         elif "GEDU" in sensor or "CMG-EDU" in sensor:
             cliplevel = gain * 0.00417 
+        elif "PMD" in sensor:
+            # 0.65 cm/s no idea
+            cliplevel = gain * 0.0065
         logging.debug("K2 logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     # ES-T attached to or inside Basalts/Obsidians were usually set to 4g with a few exceptions.
@@ -374,6 +388,11 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
             # 0.67 cm/s
             cliplevel = gain * 0.0067
         logging.debug("RT130 logger: {}, cliplevel: {}\n".format(logger,cliplevel))
+    elif "SMART" in logger:
+        if "HS1" in sensor:
+            # small clip
+            clip = gain * 0.0001
+        logging.debug("SMART logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     return cliplevel
 
