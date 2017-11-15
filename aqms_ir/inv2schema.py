@@ -1,24 +1,24 @@
 """ inventory is an obspy Inventory object """
 import logging
+from collections import OrderedDict
 
 from schema import Abbreviation, Format, Unit, Channel, Station, SimpleResponse, AmpParms, CodaParms
 
 # noise level in m/s used for determining cutoff level for Md
 CUTOFF_GM=1.7297e-7
 # keep track of successful and failed commits
-commit_metrics = {
-                 "stations_good" : [],
-                 "stations_bad"  : [],
-                 "channels_good" : [],
-                 "channels_bad"  : [],
-                 "response_good" : [],
-                 "response_bad"  : [],
-                 "codaparms_good": [],
-                 "codaparms_bad" : [],
-                 "ampparms_good" : [],
-                 "ampparms_bad"  : [],
-                 "clip_bad"      : []
-                  }
+commit_metrics = OrderedDict()
+commit_metrics["stations_good"] = []
+commit_metrics["stations_bad"]  = []
+commit_metrics["channels_good"] = []
+commit_metrics["channels_bad"]  = []
+commit_metrics["response_good"] = []
+commit_metrics["response_bad"]  = []
+commit_metrics["codaparms_good"]= []
+commit_metrics["codaparms_bad"] = []
+commit_metrics["ampparms_good"] = []
+commit_metrics["ampparms_bad"]  = []
+commit_metrics["clip_bad"]      = []
 
 def inventory2db(session, inventory):
     if inventory.networks:
@@ -57,7 +57,6 @@ def _get_net_id(session, network):
     else:
         network_entry = Abbreviation(description=network.description)
         session.add(network_entry)
-        print network_entry.id
         try:
             session.commit()
             result = session.query(Abbreviation).filter_by(description=network.description).first()
@@ -266,30 +265,25 @@ def _channel2db(session, network_code, station_code, channel):
 
     inid = _get_inid(session, channel)
     calib_unit = _get_unit(session, channel.calibration_units, channel.calibration_units_description)
-    signal_unit = _get_unit(session, channel.response.instrument_sensitivity.input_units, channel.response.instrument_sensitivity.input_units_description)
+    if hasattr(channel.response,"instrument_sensitivity") and channel.response.instrument_sensitivity:
+        signal_unit = _get_unit(session, channel.response.instrument_sensitivity.input_units, channel.response.instrument_sensitivity.input_units_description)
+    elif hasattr(channel.response,"instrument_polynomial"):
+        signal_unit = _get_unit(session, channel.response.instrument_polynomial.input_units, channel.response.instrument_polynomial.input_units_description)
+    else:
+        signal_unit=None
+
     format_id = _get_format_id(session)
 
-    #try:
-        #db_channel = session.query(Channel).filter_by(net=network_code, \
-        #             sta=station_code, seedchan=channel.code, \
-        #             location=channel.location_code, \
-        #             ondate=channel.start_date.datetime).one()
-    #except Exception as e:
-        #logging.info("Channel not in db: {}".format(e))
-        # check to see if there are other epochs for this channel, if so, delete them. Too difficult to figure out what user wants to do (insert, replace, etc.)
-        # removed = session.query(Channel).filter(net=network_code, sta=station_code, seedchan=channel.code, location=channel.location_code, ondate != channel.start_date.datetime).delete()
-        # if removed > 0:
-        #     logging.info("Removed {} epochs for channel {}.{}.{}.{}\n".format(removed,network_code, station_code, channel.code, channel.location_code))
-        # create the new entry
     db_channel = Channel(net=network_code, sta=station_code, seedchan=channel.code, location=fix(channel.location_code), ondate=channel.start_date.datetime)
     session.add(db_channel)
-            
 
     if inid:
         db_channel.inid = inid
 
-    db_channel.unit_signal = signal_unit
-    db_channel.unit_calib = calib_unit
+    if signal_unit:
+        db_channel.unit_signal = signal_unit
+    if calib_unit:
+        db_channel.unit_calib = calib_unit
     db_channel.format_id = format_id
     db_channel.offdate = channel.end_date.datetime
     db_channel.lat = channel.latitude
@@ -344,6 +338,11 @@ def _simple_response2db(session,network_code,station_code,channel):
         logging.warning("{}-{} does not have an instrument sensitivity, no response".format(station_code,channel.code))
         return
 
+    if not hasattr(channel.response.instrument_sensitivity,"input_units") or \
+           channel.response.instrument_sensitivity.input_units not in ['M/S', 'M/S**2', 'CM/S', 'CM/S**2', 'M', 'CM']:
+        logging.warning("{}-{} is not a seismic component, no response".format(station_code,channel.code))
+        return
+
     fn, damping, lowest_freq, highest_freq, gain = simple_response(channel.sample_rate,channel.response)
 
     db_simple_response = SimpleResponse(net=network_code, sta=station_code, \
@@ -369,8 +368,7 @@ def _simple_response2db(session,network_code,station_code,channel):
         commit_metrics["response_bad"].append(station_code + "." + channel.code)
 
     # next fill channelmap_codaparms (only for seismic channels, verticals)
-    if channel.response.instrument_sensitivity.input_units in \
-        ['M/S','CM/S','M/S**2', 'CM/S**2'] and channel.dip != 0.0:
+    if channel.dip != 0.0:
 
         db_codaparms = CodaParms(net=network_code, sta=station_code, \
                        seedchan=channel.code, location=fix(channel.location_code), \
@@ -390,68 +388,66 @@ def _simple_response2db(session,network_code,station_code,channel):
             commit_metrics["codaparms_bad"].append(station_code + "." + channel.code)
 
     # next fill channelmap_ampparms, for seismic channels only, all components
-    if channel.response.instrument_sensitivity.input_units in \
-        ['M/S','CM/S','M/S**2', 'CM/S**2']:
 
-        if network_code in ["UW", "CC", "UO", "HW"]:
+    if network_code in ["UW", "CC", "UO", "HW"]:
 
-            # get sensor and logger info
-            if "=" in channel.sensor.description and "-" in channel.sensor.description:
-                # PNSN instrument identifier
-                sensor, sensor_sn, logger, logger_sn = parse_instrument_identifier(channel.sensor.description)
-            elif len(channel.sensor.description.split(",")) == 3:
-                # possibly instrument identifier from SIS dataless->IRIS->StationXML
-                sensor, sensor_sn, logger, logger_sn = parse_instrument_identifier(channel.sensor.description)
-            else:
-                sensor = channel.sensor.type
-                sensor_sn = channel.sensor.serial_number
-                logger = channel.data_logger.type
-                logger_sn = channel.data_logger.serial_number
-
-            logging.info("{}-{}: channel equipment: {}-{}={}-{}".format(station_code,channel.code,sensor,sensor_sn,logger,logger_sn))
-
-            try:
-                clip = get_cliplevel(sensor,sensor_sn,logger,logger_sn, gain)
-            except Exception as err:
-                logging.error("Cannot determine cliplevel {}: {}".format(channel.sensor,err))
-
+        # get sensor and logger info
+        if "=" in channel.sensor.description and "-" in channel.sensor.description:
+            # PNSN instrument identifier
+            sensor, sensor_sn, logger, logger_sn = parse_instrument_identifier(channel.sensor.description)
+        elif len(channel.sensor.description.split(",")) == 3:
+            # possibly instrument identifier from SIS dataless->IRIS->StationXML
+            sensor, sensor_sn, logger, logger_sn = parse_instrument_identifier(channel.sensor.description)
         else:
-            # first see if there is something like 2g,3g,4g in instrument identifier
-            if "2g" in channel.sensor.description:
-                clip = gain * 2 * 9.8
-            elif "4g" in channel.sensor.description:
-                clip = gain * 4 * 9.8
-            elif "1g" in channel.sensor.description:
-                clip = gain * 9.8
-            elif "3g" in channel.sensor.description:
-                clip = gain * 3 * 9.8
-            elif channel.code[1] == "N" or channel.code[1] == "L":
-                # strong-motion, assume 4g
-                clip = gain * 4 * 9.8
-            elif channel.code[0:1] in ["EH", "SH"]:
-                # short-period
-                clip = gain * 0.0001
-            elif channel.code[0:1] in ["BH", "HH"]:
-                # 1 cm/s
-                clip = gain * 0.0100
-        
-        # have clip, fill channelmap_ampparms                
-        db_ampparms = AmpParms(net=network_code, sta=station_code, \
-                      seedchan=channel.code, location=fix(channel.location_code), \
-                      ondate=channel.start_date.datetime)
+            sensor = channel.sensor.type
+            sensor_sn = channel.sensor.serial_number
+            logger = channel.data_logger.type
+            logger_sn = channel.data_logger.serial_number
 
-        session.add(db_ampparms)
-        db_ampparms.channel = channel.code
-        db_ampparms.clip = clip
-        db_ampparms.offdate = channel.end_date.datetime
-        if clip == -1:
-            commit_metrics["clip_bad"].append(station_code + "." + channel.code)
+        logging.info("{}-{}: channel equipment: {}-{}={}-{}".format(station_code,channel.code,sensor,sensor_sn,logger,logger_sn))
+
         try:
-            session.commit()
-            commit_metrics["ampparms_good"].append(station_code + "." + channel.code)
-        except Exception as error:
-            logging.error("Unable to add ampparms {} to db: {}".format(db_ampparms,error))
-            commit_metrics["ampparms_bad"].append(station_code + "." + channel.code)
+            clip = get_cliplevel(sensor,sensor_sn,logger,logger_sn, gain)
+        except Exception as err:
+            logging.error("Cannot determine cliplevel {}: {}".format(channel.sensor,err))
+
+    else:
+        # first see if there is something like 2g,3g,4g in instrument identifier
+        if "2g" in channel.sensor.description:
+            clip = gain * 2 * 9.8
+        elif "4g" in channel.sensor.description:
+            clip = gain * 4 * 9.8
+        elif "1g" in channel.sensor.description:
+            clip = gain * 9.8
+        elif "3g" in channel.sensor.description:
+            clip = gain * 3 * 9.8
+        elif channel.code[1] == "N" or channel.code[1] == "L":
+            # strong-motion, assume 4g
+            clip = gain * 4 * 9.8
+        elif channel.code[0:1] in ["EH", "SH"]:
+            # short-period
+            clip = gain * 0.0001
+        elif channel.code[0:1] in ["BH", "HH"]:
+            # 1 cm/s
+            clip = gain * 0.0100
+        
+    # have clip, fill channelmap_ampparms                
+    db_ampparms = AmpParms(net=network_code, sta=station_code, \
+                  seedchan=channel.code, location=fix(channel.location_code), \
+                  ondate=channel.start_date.datetime)
+
+    session.add(db_ampparms)
+    db_ampparms.channel = channel.code
+    db_ampparms.clip = clip
+    db_ampparms.offdate = channel.end_date.datetime
+    if not clip or clip == -1:
+        commit_metrics["clip_bad"].append(station_code + "." + channel.code)
+    try:
+        session.commit()
+        commit_metrics["ampparms_good"].append(station_code + "." + channel.code)
+    except Exception as error:
+        logging.error("Unable to add ampparms {} to db: {}".format(db_ampparms,error))
+        commit_metrics["ampparms_bad"].append(station_code + "." + channel.code)
 
     return
 
@@ -461,13 +457,19 @@ def fix(location):
     else:
         return location
 
-def print_metrics(bad_only=True):
+def print_metrics(bad_only=True, abbreviated=False):
     for k,v in commit_metrics.iteritems():
         if len(v) > 0:
             if bad_only and "bad" in k:
-                print_metric(k,v)
+                if abbreviated:
+                    print("{}: {}".format(k,len(v)))
+                else:
+                    print_metric(k,v)
             elif not bad_only:
-                print_metric(k,v)
+                if abbreviated:
+                    print("{}: {}".format(k,len(v)))
+                else:
+                    print_metric(k,v)
     return
 
 def print_metric(key, values):

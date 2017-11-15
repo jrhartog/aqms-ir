@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import argparse
 import datetime
 import logging
 
@@ -9,7 +10,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy.orm import sessionmaker
 
 from aqms_ir.configure import configure
-from aqms_ir.inv2schema import inventory2db
+from aqms_ir.inv2schema import inventory2db, print_metrics
 from aqms_ir.schema import Base
 
 # Global scope: start the engine and bind a Session factory to it
@@ -23,14 +24,44 @@ Session = sessionmaker(bind=engine)
 
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser(description="Reads FDSN StationXML    \
+        and populates (PostgreSQL) AQMS tables station_data, channel_data, \
+        simple_response, channelmap_ampparms, channelmap_codaparms, and    \
+        associated dictionary tables (d_abbreviation, d_unit, d_format).   \
+        Database connection parameters have to be set with environment     \
+        variables DB_NAME, DB_HOST, DB_PORT, DB_USER, and optionally,     \
+        DB_PASSWORD. \
+        The tables will be created if they do not exist yet. \
+        Alternatively it can be run with the -f flag to save the meta-data to a \
+        StationXML file instead. Logs are written to inventory2aqms.log. \
+        See https://github.com/pnsn/aqms_ir") 
+
+    # required argument
+    help_text = "Specify name of FDSN StationXML file"
+    parser.add_argument("xmlfile",help=help_text)
+
+    # optional argument
+    help_text = "Be more verbose in logfile"
+    parser.add_argument("-v","--verbose",help=help_text,action="store_true")
+
+    args = parser.parse_args()
+
     logging.basicConfig(filename="inventory2aqms.log", level=logging.DEBUG)
-    logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
     
     # This command will create the database tables if they do not exist yet.
     Base.metadata.create_all(engine)
 
-    inv = read_inventory("inventory.xml", format="STATIONXML")
+    inv = read_inventory(args.xmlfile, format="STATIONXML")
 
     session = Session()
     inventory2db(session,inv)
     session.close()
+
+    print inv
+    print "Database Loading Metrics:\n"
+    print_metrics(bad_only=False, abbreviated=True)
+

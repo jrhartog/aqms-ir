@@ -184,7 +184,9 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
 
     cliplevel = -1   
 
+    logging.debug("In get_cliplevel: {},{},{},{},{}\n".format(sensor, sensor_sn, logger, logger_sn, gain))
     if sensor and not logger:
+        logging.debug("have sensor but not logger: {},{},{},{}\n".format(sensor, sensor_sn, logger, logger_sn))
         # do not have any info about logger, this can happen, for example:
         # SIS dataless instrument identifier is sensor_model,sensor_description,sensor_type
         # let's assume this is the provenance of the StationXML (SIS dataless->IRIS->stationXML)
@@ -216,7 +218,7 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
         elif "TRILLIUM COMPACT" in sensor:
             # 2.6 cm/s
             cliplevel = gain * 0.0260
-        elif "TRILLIUM" in sensor:
+        elif "TRILLIUM" in sensor or "TR240" in sensor:
             # 1.25 cm/s
             cliplevel = gain * 0.0125
         elif "STS-2" in sensor:
@@ -226,10 +228,12 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
         return cliplevel
 
     # when we do have logger model name, do the following logic:
+    logging.debug("have sensor and logger: {},{},{},{}\n".format(sensor, sensor_sn, logger, logger_sn))
 
     # national instruments earthworm data loggers, use 2048
     if "Wrm" in logger or "EARTHWORM NI" in logger or "LEGACY" in logger:
         cliplevel = 2048
+        logging.debug("EW logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     # community project earthworm digitizer, use 16384 except for Rim Village
     elif "PSN" in logger:
@@ -237,16 +241,19 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
             cliplevel = 8192.
         else:
             cliplevel = 16384
+        logging.debug("PSN logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     # Cascades-16S with short-period, assume clipping is due to sensor, assume something small
     elif "C16S" in logger or "CASCADES-16S" in logger:
         cliplevel = gain * 0.0001
         if cliplevel > 32768.:
             cliplevel = 32768.
+        logging.debug("C16S logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     # NetQuakes are all set to 3g
     elif "NQ" in logger or "NETQUAKE" in logger:
         cliplevel = gain * 3 * 9.8
+        logging.debug("NQ logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     # IDS strong-motion were all 2g
     elif "IDS" in logger: 
@@ -258,20 +265,24 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
         elif "PMD" in sensor:
             # 0.65 cm/s (just a guess)
             cliplevel = gain * 0.0065
+        logging.debug("IDS logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     # Our CMG-5TD packages were supposed to be 4g, but some were set to 8g
     elif "G5TD" in logger or "CMG-5TD" in sensor:
         cliplevel = gain * 4 * 9.8
         if logger_sn in ["D838", "D833", "D820", "D826", "D817", "D825", "D810"]:
             cliplevel = 2 * cliplevel
+        logging.debug("G5TD logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     # CMG-6TD clips at 4.17 cm/s
     elif "G6TD" in logger or "CMG-6T" in sensor:
         cliplevel = gain * 0.00417
+        logging.debug("G6TD logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     # Our Titans in TitanSMAs are all set to 4g
     elif "TITAN" in logger:
         cliplevel = gain * 4 * 9.8
+        logging.debug("TITANsma logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     # same with the ones inside the Trillium Cascadia
     elif "CENT" in logger or "CENTAUR" in logger:
@@ -280,6 +291,7 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
         elif "TRCOM" in sensor or "TRILLIUM COMPACT PH" in sensor:
             # 2.6 cm/s
             cliplevel = gain * 0.0260 
+        logging.debug("CENTAUR logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     # ES-T attached to or inside K2s etc. were usually set to 2g with a few exceptions.
     elif "K2" in logger or "Etna" in logger or "MAK" in logger or "GRAN" in logger:
@@ -291,9 +303,10 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
             cliplevel = gain * 0.0001
         elif "GEDU" in sensor or "CMG-EDU" in sensor:
             cliplevel = gain * 0.00417 
+        logging.debug("K2 logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     # ES-T attached to or inside Basalts/Obsidians were usually set to 4g with a few exceptions.
-    elif "ROCK" in logger or "OBSID" in logger or "BASALT":
+    elif "ROCK" in logger or "OBSID" in logger or "BASALT" in logger:
         if "ES" in sensor:
             cliplevel = gain * 4 * 9.8
             if logger_sn in ["1597", "1598", "1599", "1600", "1601"]:
@@ -301,6 +314,7 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
                 cliplevel = 0.5*cliplevel
         elif "L4" in sensor or "L4C" in sensor or "S13" in sensor or "L-4C" in sensor or "S-13" in sensor:
             cliplevel = gain * 0.0001
+        logging.debug("ROCK logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     # Old refteks
     elif "72A" in logger:
@@ -316,6 +330,7 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
             cliplevel = 0.0067
         elif "G3T" in sensor or "CMG-3T" in sensor or "GT3134" in sensor:
             cliplevel = 0.0067
+        logging.debug("RefTek logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     # ES-T attached to Q330s tend to be set to 4g, except in Oregon
     elif "Q330" in logger:
@@ -326,15 +341,16 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
                              "3831", "3832", "3833", "3834", "3838", "3841", \
                              "4588", "4590", "7272"]: 
                 cliplevel = 0.5 * cliplevel
-        if "STS2" in sensor or "STS-2" in sensor:
+        elif "STS2" in sensor or "STS-2" in sensor:
             # 1.25 cm/s
             cliplevel = gain * 0.0125 
-        if "G3T" in sensor or "CMG-3T" in sensor:
+        elif "G3T" in sensor or "CMG-3T" in sensor:
             # 0.67 cm/s
             cliplevel = gain * 0.0067
-        if "TR240" in sensor or "TRILLIUM 240" in sensor:
+        elif "TR240" in sensor or "TRILLIUM 240" in sensor:
             # 1.50 cm/s
             cliplevel = gain * 0.0150
+        logging.debug("Q330 logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     # ES-T and RT147 attached to RT130 dataloggers are set to 4g.
     elif "130" in logger:
@@ -354,7 +370,7 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
         elif "GT3134" in sensor or "CMG-3T" in sensor:
             # 0.67 cm/s
             cliplevel = gain * 0.0067
-
+        logging.debug("RT130 logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     return cliplevel
 
