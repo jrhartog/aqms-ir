@@ -391,7 +391,7 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
     elif "SMART" in logger:
         if "HS1" in sensor:
             # small clip
-            clip = gain * 0.0001
+            cliplevel = gain * 0.0001
         logging.debug("SMART logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     return cliplevel
