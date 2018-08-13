@@ -1,8 +1,12 @@
 """ inventory is an obspy Inventory object """
 import logging
 from collections import OrderedDict
+import datetime
 
 from schema import Abbreviation, Format, Unit, Channel, Station, SimpleResponse, AmpParms, CodaParms
+
+# station or channel end-date when none has been provided
+DEFAULT_ENDDATE = datetime.datetime(3000,01,01)
 
 # noise level in m/s used for determining cutoff level for Md
 CUTOFF_GM = 1.7297e-7
@@ -223,6 +227,7 @@ def _station2db(session, network, station):
     net_id = _get_net_id(session,network)
     network_code = network.code
     station_code = station.code
+    default_enddate = datetime.datetime(3000,01,01)
     # first remove any prior meta-data associated with Net-Sta and Net-Sta-Chan-Loc
     try:
         status = _remove_station(session,network,station)
@@ -234,7 +239,10 @@ def _station2db(session, network, station):
     session.add(db_station)
 
     db_station.net_id = net_id
-    db_station.offdate = station.end_date.datetime
+    if hasattr(station,"end_date") and station.end_date:
+        db_station.offdate = station.end_date.datetime
+    else:
+        db_station.offdate = DEFAULT_ENDDATE
     db_station.lat = station.latitude
     db_station.lon = station.longitude
     db_station.elev = station.elevation
@@ -289,7 +297,10 @@ def _channel2db(session, network_code, station_code, channel):
     if calib_unit:
         db_channel.unit_calib = calib_unit
     db_channel.format_id = format_id
-    db_channel.offdate = channel.end_date.datetime
+    if hasattr(channel,"end_date") and channel.end_date:
+        db_channel.offdate = channel.end_date.datetime
+    else:
+        db_channel.offdate = DEFAULT_ENDDATE
     db_channel.lat = channel.latitude
     db_channel.lon = channel.longitude
     db_channel.elev = channel.elevation
@@ -362,7 +373,10 @@ def _simple_response2db(session,network_code,station_code,channel):
     db_simple_response.gain_units = "DU/" + channel.response.instrument_sensitivity.input_units
     db_simple_response.low_freq_corner = highest_freq
     db_simple_response.high_freq_corner = lowest_freq
-    db_simple_response.offdate = channel.end_date.datetime
+    if hasattr(channel,"end_date") and channel.end_date:
+        db_simple_response.offdate = channel.end_date.datetime
+    else:
+        db_simple_response.offdate = DEFAULT_ENDDATE
 
     try:
         session.commit()
@@ -383,7 +397,10 @@ def _simple_response2db(session,network_code,station_code,channel):
         # this is too low for strong-motion channels, multiply with 1000 to get something reasonable
         if channel.code[1] == "N":
             db_codaparms.cutoff = 1000.0 * db_codaparms.cutoff
-        db_codaparms.offdate = channel.end_date.datetime
+        if hasattr(channel,"end_date") and channel.end_date:
+            db_codaparms.offdate = channel.end_date.datetime
+        else:
+            db_codaparms.offdate = DEFAULT_ENDDATE
         try:
             session.commit()
             commit_metrics["codaparms_good"].append(station_code + "." + channel.code)
@@ -443,7 +460,10 @@ def _simple_response2db(session,network_code,station_code,channel):
     session.add(db_ampparms)
     db_ampparms.channel = channel.code
     db_ampparms.clip = clip
-    db_ampparms.offdate = channel.end_date.datetime
+    if hasattr(channel,"end_date") and channel.end_date:
+        db_ampparms.offdate = channel.end_date.datetime
+    else:
+        db_ampparms.offdate = DEFAULT_ENDDATE
     if not clip or clip == -1:
         commit_metrics["clip_bad"].append(station_code + "." + channel.code)
     try:
