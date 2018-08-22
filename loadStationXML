@@ -61,7 +61,8 @@ if __name__ == "__main__":
     if args.location:
         kwargs["location"] = args.location
 
-    logging.basicConfig(filename="inventory2aqms.log", level=logging.DEBUG)
+    logfile = "loadStationXML_{}.log".format(datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+    logging.basicConfig(filename=logfile, level=logging.INFO)
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
