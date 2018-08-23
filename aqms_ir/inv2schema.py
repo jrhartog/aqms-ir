@@ -6,7 +6,7 @@ import datetime
 from schema import Abbreviation, Format, Unit, Channel, Station, SimpleResponse, AmpParms, CodaParms
 
 # station or channel end-date when none has been provided
-DEFAULT_ENDDATE = datetime.datetime(3000,01,01)
+DEFAULT_ENDDATE = datetime.datetime(3000,1,1)
 
 # noise level in m/s used for determining cutoff level for Md
 CUTOFF_GM = 1.7297e-7
