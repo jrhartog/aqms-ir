@@ -227,7 +227,7 @@ def _station2db(session, network, station):
     net_id = _get_net_id(session,network)
     network_code = network.code
     station_code = station.code
-    default_enddate = datetime.datetime(3000,01,01)
+    default_enddate = datetime.datetime(3000,1,1)
     # first remove any prior meta-data associated with Net-Sta and Net-Sta-Chan-Loc
     try:
         status = _remove_station(session,network,station)
