@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
+import six
 
 import argparse
 import datetime
@@ -74,7 +75,7 @@ if __name__ == "__main__":
 
     logging.info("Retrieving station information from {} webservice\n".format(args.webservice))
     logging.info("Request parameters:\n")
-    for key, value in kwargs.iteritems():
+    for key, value in six.iteritems(kwargs):
         logging.info("\t{}={}".format(key,value))
     
     # retrieve the requested inventory
