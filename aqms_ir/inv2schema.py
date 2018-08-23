@@ -3,7 +3,7 @@ import logging
 from collections import OrderedDict
 import datetime
 
-from schema import Abbreviation, Format, Unit, Channel, Station, SimpleResponse, AmpParms, CodaParms
+from .schema import Abbreviation, Format, Unit, Channel, Station, SimpleResponse, AmpParms, CodaParms
 
 # station or channel end-date when none has been provided
 DEFAULT_ENDDATE = datetime.datetime(3000,1,1)
