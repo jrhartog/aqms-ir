@@ -5,6 +5,7 @@ import datetime
 import logging
 
 from obspy import read_inventory
+from obspy import UTCDateTime
 
 from sqlalchemy import engine_from_config
 from sqlalchemy.orm import sessionmaker
@@ -43,6 +44,8 @@ if __name__ == "__main__":
     # optional argument
     help_text = "Be more verbose in logfile"
     parser.add_argument("-v","--verbose",help=help_text,action="store_true")
+    help_text = "Add currently active channels only"
+    parser.add_argument("-a","--active",help=help_text,action="store_true")
     help_text = "Specify a station code, wildcards are allowed"
     parser.add_argument("-s","--station",help=help_text)
     help_text = "Specify a channel code, wildcards are allowed"
@@ -60,8 +63,10 @@ if __name__ == "__main__":
         kwargs["channel"] = args.channel
     if args.location:
         kwargs["location"] = args.location
+    if args.active:
+        kwargs["starttime"] = UTCDateTime(datetime.datetime.utcnow())
 
-    logfile = "loadStationXML_{}.log".format(datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+    logfile = "loadStationXML_{}.log".format(datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
     logging.basicConfig(filename=logfile, level=logging.INFO)
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)

@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+
+import argparse
+import logging
+import os
+import sys
+
+import obspy
+
+from obspy.core import UTCDateTime
+try: 
+    # more recent versions of ObsPy
+    from obspy.clients.fdsn import Client
+except:
+    # this works for 0.10.2 version
+    from obspy.fdsn import Client
+
+if __name__ == "__main__":
+    """
+        Simple program to query a FDSN Station Webservice and save the
+        meta-data to a file.
+    """
+    parser = argparse.ArgumentParser(description="Retrieves FDSN StationXML from \
+        a fdsn webservice (default=IRIS) and saves output to a file.")
+
+    # required argument
+    help_text = "Specify a FDSN or Virtual network code, wildcards are allowed"
+    parser.add_argument("network",help=help_text)
+
+    # optional arguments
+    help_text = "Be more verbose in logfile"
+    parser.add_argument("-v","--verbose",help=help_text,action="store_true")
+    help_text = "Request metadata for active channels only, default is for all times!"
+    parser.add_argument("-a","--active",help=help_text,action="store_true")
+    help_text = "Provide output filename, default is inventory.xml"
+    parser.add_argument("-f","--filename", help=help_text)
+    help_text = "Specify a station code, wildcards are allowed"
+    parser.add_argument("-s","--station",help=help_text)
+    help_text = "Specify a channel code, wildcards are allowed"
+    parser.add_argument("-c","--channel",help=help_text)
+    help_text = "Specify a location code, wildcards are allowed"
+    parser.add_argument("-l","--location",help=help_text)
+    help_text = "Specify Webservice to query (default=IRIS)"
+    parser.add_argument("-ws","--webservice",help=help_text,default="IRIS", choices=["BGR",
+    "EMSC","ETH","GEONET","GFZ","INGV","IPGP","IRIS","ISC","KOERI","LMU","NCEDC",
+    "NIEP","NOA","ODC","ORFEUS","RESIF","SCEDC","USGS","USP"])
+    help_text = "Specify level of information (default=response)"
+    parser.add_argument("-level","--level",help=help_text,default="response",choices=["station","channel","response"])
+    
+    args = parser.parse_args()
+    print args
+
+    client = Client(args.webservice)
+    logfile = "fdsnws-station2aqms_{}.log".format(datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
+    logging.basicConfig(filename=logfile, level=logging.WARNING)
+
+    kwargs = {}
+    kwargs["network"] = args.network
+    if args.active:
+        kwargs["endafter"] = UTCDateTime.now()
+    if args.station:
+        kwargs["station"] = args.station
+    if args.channel:
+        kwargs["channel"] = args.channel
+    if args.location:
+        kwargs["location"] = args.location
+    if args.level:
+        kwargs["level"] = args.level
+
+    if args.verbose:
+        logging.getLogger().setLevel(logging.INFO)
+
+
+    logging.info("Retrieving station information from {} webservice\n".format(args.webservice))
+    logging.info("Request parameters:\n")
+    for key, value in kwargs.iteritems():
+        logging.info("\t{}={}".format(key,value))
+    
+    # retrieve the requested inventory
+    try:
+        inventory = client.get_stations(**kwargs)
+    except Exception as e:
+        print("No data available at {}: {}".format(args.webservice,e))
+        sys.exit()
+
+    logging.info("Retrieved inventory: \n {}".format(inventory)) 
+
+
+    # write to file
+    if args.filename:
+        logging.info("Writing inventory to file {}".format(args.filename))
+        inventory.write(args.filename, format="STATIONXML")
+    else:
+        inventory.write("inventory.xml",format="STATIONXML")
