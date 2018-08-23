@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 
 import argparse
 import datetime
@@ -87,7 +88,7 @@ if __name__ == "__main__":
     inventory2db(session,inv)
     session.close()
 
-    print inv
-    print "Database Loading Metrics:\n"
+    print(inv)
+    print("Database Loading Metrics:\n")
     print_metrics(bad_only=False, abbreviated=True)
 

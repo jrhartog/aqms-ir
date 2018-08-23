@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 
 import argparse
 import logging
@@ -48,7 +49,6 @@ if __name__ == "__main__":
     parser.add_argument("-level","--level",help=help_text,default="response",choices=["station","channel","response"])
     
     args = parser.parse_args()
-    print args
 
     client = Client(args.webservice)
     logfile = "fdsnws-station2aqms_{}.log".format(datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
