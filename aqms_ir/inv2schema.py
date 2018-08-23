@@ -168,13 +168,43 @@ def _remove_station(session, network, station):
 def _remove_channels(session, network_code, station):
     station_code = station.code
     status = 0
-    for channel in station.channels:
-        try:
-            status = status + _remove_channel(session, network_code, station_code, channel)
-        except Exception as e:
-            logging.error("Unable to delete channel {}.{}.{}.{}: {}".format( \
-            network_code, station_code, channel.code, channel.location_code, e))
-            continue # next channel
+    # remove all channels for this station, not just the ones in the XML file
+    try:
+        status = session.query(Channel).filter_by(net=network_code,sta=station_code).delete()
+    except Exception as e:
+        logging.error("Unable to delete channels: {}.{}: {}".format(network_code,station_code,e))
+
+    try:
+        status = _remove_simple_responses(session, network_code, station_code)
+    except Exception as e:
+        logging.error("Unable to delete responses: {}.{}: {}".format(network_code,station_code,e))
+
+    #for channel in station.channels:
+    #    try:
+    #        status = status + _remove_channel(session, network_code, station_code, channel)
+    #    except Exception as e:
+    #        logging.error("Unable to delete channel {}.{}.{}.{}: {}".format( \
+    #        network_code, station_code, channel.code, channel.location_code, e))
+    #        continue # next channel
+    return status
+
+def _remove_simple_responses(session, network_code, station_code):
+
+    try:
+        status = session.query(SimpleResponse).filter_by(net=network_code,sta=station_code).delete()
+    except Exception as e:
+        logging.error("remove_simple_responses: {}.{}: {}".format(network_code,station_code,e))
+
+    try:
+        status = session.query(CodaParms).filter_by(net=network_code,sta=station_code).delete()
+    except Exception as er:
+        logging.error("remove_simple_responses, codaparms: {}.{}: {}".format(network_code,station_code,er))
+
+    try:
+        status = session.query(AmpParms).filter_by(net=network_code,sta=station_code).delete()
+    except Exception as error:
+        logging.error("remove_simple_responses,ampparms: {}.{}: {}".format(network_code,station_code,error))
+
     return status
 
 def _remove_channel(session, network_code, station_code, channel):
