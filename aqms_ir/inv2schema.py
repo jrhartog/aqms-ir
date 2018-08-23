@@ -1,4 +1,6 @@
 """ inventory is an obspy Inventory object """
+import six
+
 import logging
 from collections import OrderedDict
 import datetime
@@ -482,7 +484,7 @@ def fix(location):
         return location
 
 def print_metrics(bad_only=True, abbreviated=False):
-    for k,v in commit_metrics.iteritems():
+    for k,v in six.iteritems(commit_metrics):
         if len(v) > 0:
             if bad_only and "bad" in k:
                 if abbreviated:
