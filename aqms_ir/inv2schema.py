@@ -349,7 +349,7 @@ def _response2db(session, network_code, station_code, channel,fill_all=False):
     return
 
 def _simple_response2db(session,network_code,station_code,channel):
-    from util import simple_response, parse_instrument_identifier, get_cliplevel
+    from .util import simple_response, parse_instrument_identifier, get_cliplevel
 
     if not hasattr(channel.response,"instrument_sensitivity") or not channel.response.instrument_sensitivity:
         logging.warning("{}-{} does not have an instrument sensitivity, no response".format(station_code,channel.code))
