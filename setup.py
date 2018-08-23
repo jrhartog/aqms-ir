@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name="aqms-ir", 
-    version="0.0.9",
+    version="0.1.0",
     description="translation between obspy Inventory object and AQMS schema",
     url="http://github.com/pnsn/aqms-ir",
     author="Renate Hartog",
