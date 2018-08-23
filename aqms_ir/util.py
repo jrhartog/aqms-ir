@@ -225,6 +225,8 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
             cliplevel = gain * 0.0120
         elif "CMG-6T" in sensor or "CMG-EDU" in sensor:
             cliplevel = gain * 0.00417
+        elif "HS-1-LT" in sensor:
+            cliplevel = gain * 0.001
         return cliplevel
 
     # when we do have logger model name, do the following logic:
