@@ -208,7 +208,7 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
             cliplevel = gain * 9.8
         elif "GEOSIG-AC-63" in sensor:
             cliplevel = gain * 3 * 9.8
-        elif "CMG-40T" in sensor:
+        elif "CMG-40T" in sensor or "CMG40T" in sensor:
             # 1.25 cm/s
             cliplevel = gain * 0.0125
         elif "CMG-3T" in sensor:
@@ -346,7 +346,7 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
             cliplevel = gain * 1 * 9.8
         elif "L22" in sensor:
             cliplevel = gain * 0.0001
-        elif "G40T_60" in sensor or "CMG-40T" in sensor:
+        elif "G40T_60" in sensor or "CMG-40T" in sensor or "CMG40T" in sensor:
             cliplevel = 0.0125
         elif "G3TNSN" in sensor or "CMG-3T/NSN" in sensor:
             cliplevel = 0.0067
