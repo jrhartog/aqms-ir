@@ -501,7 +501,7 @@ def _simple_response2db(session,network_code,station_code,channel):
         elif channel.code[0:2] in ["EH", "SH"]:
             # short-period
             clip = gain * 0.0001
-        elif channel.code[0:2] in ["BH", "HH"]:
+        elif channel.code[0:2] in ["BH", "MH", "HH"]:
             # 1 cm/s
             clip = gain * 0.0100
         else:
