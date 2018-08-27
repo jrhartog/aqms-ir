@@ -29,6 +29,8 @@ commit_metrics["codaparms_bad"] = []
 commit_metrics["ampparms_good"] = []
 commit_metrics["ampparms_bad"]  = []
 commit_metrics["clip_bad"]      = []
+commit_metrics["sensitivity_good"] = []
+commit_metrics["sensitivity_bad"]  = []
 
 def inventory2db(session, inventory):
     if inventory.networks:
