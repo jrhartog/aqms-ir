@@ -170,3 +170,28 @@ class CodaParms(Base):
                 offdate={}, cutoff={}, gain_corr={}, summary_wt={}".\
                 format(self.net, self.sta, self.seedchan, self.location, self.ondate, \
                 self.offdate, self.cutoff, self.gain_corr, self.summary_wt)
+
+
+class Sensitivity(Base):
+    __tablename__ = "sensitivity"
+
+    net = Column('net', String(8), primary_key=True, nullable=False)
+    sta = Column('sta', String(6), primary_key=True, nullable=False)
+    seedchan = Column('seedchan', String(3), primary_key=True, nullable=False)
+    location = Column('location', String(2), primary_key=True, nullable=False)
+    ondate = Column('ondate', DateTime, primary_key=True, nullable=False)
+    offdate = Column('offdate', DateTime, default=datetime.datetime(3000,1,1))
+    stage_seq = Column('stage_seq', Integer)
+    channel = Column('channel', String(8))
+    channelsrc = Column('channelsrc', String(8), default="SEED")
+    sensitivity = Column('sensitivity', Numeric)
+    frequency = Column('frequency', Numeric)
+    lddate = Column('lddate', DateTime, server_default=text('NOW()'))
+
+    def __repr__(self):
+        return "Sensitivity: net={}, sta={}, seedchan={}, location={}, ondate={}, \
+                offdate={}, stage_seq={}, sensitivity={}, frequency={}".\
+                format(self.net, self.sta, self.seedchan, self.location, self.ondate, \
+                self.offdate, self.stage_seq, self.sensitivity, self.frequency)
+
+

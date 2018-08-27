@@ -5,7 +5,7 @@ import logging
 from collections import OrderedDict
 import datetime
 
-from .schema import Abbreviation, Format, Unit, Channel, Station, SimpleResponse, AmpParms, CodaParms
+from .schema import Abbreviation, Format, Unit, Channel, Station, SimpleResponse, AmpParms, CodaParms, Sensitivity
 
 # station or channel end-date when none has been provided
 DEFAULT_ENDDATE = datetime.datetime(3000,1,1)
@@ -179,6 +179,11 @@ def _remove_channels(session, network_code, station):
     except Exception as e:
         logging.error("Unable to delete responses: {}.{}: {}".format(network_code,station_code,e))
 
+    try:
+        status = _remove_sensitivity(session, network_code, station_code)
+    except Exception as e:
+        logging.error("Unable to delete overall sensitivity: {}.{}: {}".format(network_code,station_code,e))
+
     #for channel in station.channels:
     #    try:
     #        status = status + _remove_channel(session, network_code, station_code, channel)
@@ -204,6 +209,15 @@ def _remove_simple_responses(session, network_code, station_code):
         status = session.query(AmpParms).filter_by(net=network_code,sta=station_code).delete()
     except Exception as error:
         logging.error("remove_simple_responses,ampparms: {}.{}: {}".format(network_code,station_code,error))
+
+    return status
+
+def _remove_sensitivity(session, network_code, station_code):
+
+    try:
+        status = session.query(Sensitivity).filter_by(net=network_code,sta=station_code).delete()
+    except Exception as e:
+        logging.error("remove_sensitivity: {}.{}: {}".format(network_code,station_code,e))
 
     return status
 
@@ -372,6 +386,11 @@ def _response2db(session, network_code, station_code, channel,fill_all=False):
     # for now, only fill simple_response, channelmap_ampparms and channelmap_codaparms tables
     _simple_response2db(session,network_code,station_code,channel)
 
+    # overall sensitivity
+    if hasattr(channel.response,"instrument_sensitivity"):
+        logging.debug("FOUND INSTRUMENT_SENSITIVITY");
+        _sensitivity2db(session,network_code,station_code,channel)
+
     if fill_all:
         # do all IR tables, not implemented yet.
         pass
@@ -477,12 +496,14 @@ def _simple_response2db(session,network_code,station_code,channel):
         elif channel.code[1] == "N" or channel.code[1] == "L":
             # strong-motion, assume 4g
             clip = gain * 4 * 9.8
-        elif channel.code[0:1] in ["EH", "SH"]:
+        elif channel.code[0:2] in ["EH", "SH"]:
             # short-period
             clip = gain * 0.0001
-        elif channel.code[0:1] in ["BH", "HH"]:
+        elif channel.code[0:2] in ["BH", "HH"]:
             # 1 cm/s
             clip = gain * 0.0100
+        else:
+            clip = -1
         
     # have clip, fill channelmap_ampparms                
     db_ampparms = AmpParms(net=network_code, sta=station_code, \
@@ -506,6 +527,22 @@ def _simple_response2db(session,network_code,station_code,channel):
         commit_metrics["ampparms_bad"].append(station_code + "." + channel.code)
 
     return
+
+def _sensitivity2db(session,network_code,station_code,channel):
+    db_sensitivity = Sensitivity(net=network_code, sta=station_code, seedchan=channel.code, location=fix(channel.location_code), ondate=channel.start_date.datetime)
+    session.add(db_sensitivity)
+    db_sensitivity.stage_seq = 0
+    db_sensitivity.sensitivity = channel.response.instrument_sensitivity.value
+    db_sensitivity.frequency = channel.response.instrument_sensitivity.frequency
+    try:
+        session.commit()
+        commit_metrics["sensitivity_good"].append(station_code + "." + channel.code)
+    except Exception as error:
+        logging.error("Unable to add overall sensitivity {} to db: {}".format(db_sensitivity,error))
+        commit_metrics["sensitivity_bad"].append(station_code + "." + channel.code)
+
+    return
+    
 
 def fix(location):
     if location == "":
