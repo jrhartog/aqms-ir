@@ -389,8 +389,7 @@ def _response2db(session, network_code, station_code, channel,fill_all=False):
     _simple_response2db(session,network_code,station_code,channel)
 
     # overall sensitivity
-    if hasattr(channel.response,"instrument_sensitivity"):
-        logging.debug("FOUND INSTRUMENT_SENSITIVITY");
+    if hasattr(channel.response,"instrument_sensitivity") and channel.response.instrument_sensitivity:
         _sensitivity2db(session,network_code,station_code,channel)
 
     if fill_all:
@@ -501,7 +500,7 @@ def _simple_response2db(session,network_code,station_code,channel):
         elif channel.code[0:2] in ["EH", "SH"]:
             # short-period
             clip = gain * 0.0001
-        elif channel.code[0:2] in ["BH", "MH", "HH"]:
+        elif channel.code[0:2] in ["LH", "MH", "BH", "HH"]:
             # 1 cm/s
             clip = gain * 0.0100
         else:
