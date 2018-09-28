@@ -375,6 +375,9 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
         elif "TR120" in sensor or "TRILLIUM 120" in sensor:
             # 1.50 cm/s
             cliplevel = gain * 0.0150
+        elif "TRCOM" in sensor or "TRILLIUM COMPACT PH" in sensor:
+            # 2.6 cm/s
+            cliplevel = gain * 0.0260
         logging.debug("Q330 logger: {}, cliplevel: {}\n".format(logger,cliplevel))
 
     # ES-T and RT147 attached to RT130 dataloggers are set to 4g.
