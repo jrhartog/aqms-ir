@@ -535,6 +535,11 @@ def _sensitivity2db(session,network_code,station_code,channel):
     db_sensitivity.stage_seq = 0
     db_sensitivity.sensitivity = channel.response.instrument_sensitivity.value
     db_sensitivity.frequency = channel.response.instrument_sensitivity.frequency
+    if hasattr(channel,"end_date") and channel.end_date:
+        db_sensitivity.offdate = channel.end_date.datetime
+    else:
+        db_sensitivity.offdate = DEFAULT_ENDDATE
+
     try:
         session.commit()
         commit_metrics["sensitivity_good"].append(station_code + "." + channel.code)
