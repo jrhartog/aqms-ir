@@ -14,7 +14,7 @@ DEFAULT_ENDDATE = datetime.datetime(3000,1,1)
 CUTOFF_GM = 1.7297e-7
 
 # units for seismic channels
-SEISMIC_UNITS = ['M/S', 'M/S**2', 'M/S/S', 'CM/S', 'CM/S**2', 'CM/S/S', 'M', 'CM']
+SEISMIC_UNITS = ['M/S', 'm/s', 'M/S**2', 'm/s**2', 'M/S/S', 'm/s/s', 'CM/S', 'cm/s', 'CM/S**2', 'cm/s**2', 'CM/S/S', 'cm/s/s', 'M', 'm', 'CM', 'cm']
 
 # keep track of successful and failed commits
 commit_metrics = OrderedDict()
