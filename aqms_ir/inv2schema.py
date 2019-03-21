@@ -34,20 +34,20 @@ commit_metrics["sensitivity_bad"]  = []
 
 def inventory2db(session, inventory):
     if inventory.networks:
-        _networks2db(session, inventory.networks)
+        _networks2db(session, inventory.networks, inventory.source)
     else:
         logging.warning("This inventory has no networks, doing nothing.")
     return
 
-def _networks2db(session, networks):
+def _networks2db(session, networks, source):
     for network in networks:
-        _network2db(session,network)
+        _network2db(session,network,source)
     return
 
-def _network2db(session, network):
+def _network2db(session, network, source):
     net_id = None
     if network.stations:
-        success,failed = _stations2db(session,network)
+        success,failed = _stations2db(session,network, source)
         logging.info("\n Success: {} stations, failure: {} stations.\n".format(success,failed))
     else:
         # only insert an entry into D_Abbreviation
@@ -270,7 +270,7 @@ def _remove_simple_response(session, network_code, station_code, channel_code, l
 
     return status
 
-def _station2db(session, network, station):
+def _station2db(session, network, station, source):
 
     net_id = _get_net_id(session,network)
     network_code = network.code
@@ -305,15 +305,15 @@ def _station2db(session, network, station):
         
 
     if station.channels:
-        _channels2db(session, network_code, station_code, station.channels)
+        _channels2db(session, network_code, station_code, station.channels, source)
     return
 
-def _stations2db(session, network):
+def _stations2db(session, network, source):
     success = 0
     failed = 0
     for station in network.stations:
         try:
-             _station2db(session, network, station)
+             _station2db(session, network, station, source)
              success = success + 1
         except Exception as e:
             logging.error("Unable to add station {} to db: {}".format(station.code, e))
@@ -321,7 +321,14 @@ def _stations2db(session, network):
             continue
     return success, failed
 
-def _channel2db(session, network_code, station_code, channel):
+def _channel2db(session, network_code, station_code, channel, source):
+
+    if source != "IRIS-DMC":
+        try:
+            new_description = "{},{},{}".format(channel.sensor.model,channel.sensor.description,channel.sensor.manufacturer)
+            channel.sensor.description = new_description
+        except Exception as e:
+            logging.error("Unable to change sensor description of channel {}.{} to db: {}".format(station_code,channel.code, e))
 
     inid = _get_inid(session, channel)
     calib_unit = _get_unit(session, channel.calibration_units, channel.calibration_units_description)
@@ -358,6 +365,7 @@ def _channel2db(session, network_code, station_code, channel):
     db_channel.samprate = float(channel.sample_rate)
     db_channel.flags = ''.join(t[0] for t in channel.types)
 
+
     try:
         session.commit()
         commit_metrics["channels_good"].append(station_code + "." + channel.code)
@@ -374,10 +382,10 @@ def _channel2db(session, network_code, station_code, channel):
     return
 
 
-def _channels2db(session, network_code, station_code, channels):
+def _channels2db(session, network_code, station_code, channels, source):
     for channel in channels:
         try:
-            _channel2db(session, network_code, station_code, channel)
+            _channel2db(session, network_code, station_code, channel, source)
         except Exception as e:
             logging.error("Unable to add channel {} to db: {}".format(channel.code, e))
             continue
