@@ -14,6 +14,6 @@ setup(name="aqms-ir",
     ],
     packages=["aqms_ir"],
     scripts=["loadStationXML","getStationXML"],
-    install_requires=["numpy","obspy>=0.10.2","SQLAlchemy","psycopg2"],
+    install_requires=["numpy","obspy>=0.10.2","SQLAlchemy","psycopg2-binary"],
     zip_safe=False)
 
