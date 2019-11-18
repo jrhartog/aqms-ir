@@ -22,6 +22,6 @@ def configure(filename=None):
         DB_USER = os.getenv("DB_USER", "trinetdb")
         DB_PASSWORD = os.getenv("DB_PASSWORD")
         if not DB_PASSWORD:
-            DB_PASSWORD = raw_input("Password for user {} on {}: ".format(DB_USER,DB_NAME))
+            DB_PASSWORD = input("Password for user {} on {}: ".format(DB_USER,DB_NAME))
         configuration["sqlalchemy.url"] = "postgresql://{}:{}@{}:{}/{}".format(DB_USER,DB_PASSWORD,DB_HOST,DB_PORT,DB_NAME)
     return configuration
