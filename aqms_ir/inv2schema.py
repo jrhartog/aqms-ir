@@ -6,6 +6,7 @@ from collections import OrderedDict
 import datetime
 
 from .schema import Abbreviation, Format, Unit, Channel, Station, SimpleResponse, AmpParms, CodaParms, Sensitivity
+from .schema import PZ, PZ_Data, Poles_Zeros
 
 # station or channel end-date when none has been provided
 DEFAULT_ENDDATE = datetime.datetime(3000,1,1)
@@ -31,6 +32,11 @@ commit_metrics["ampparms_bad"]  = []
 commit_metrics["clip_bad"]      = []
 commit_metrics["sensitivity_good"] = []
 commit_metrics["sensitivity_bad"]  = []
+
+commit_metrics["pz_good"]  = []
+commit_metrics["pz_bad"]  = []
+commit_metrics["poles_zeros_good"]  = []
+commit_metrics["poles_zeros_bad"]  = []
 
 def inventory2db(session, inventory):
     if inventory.networks:
@@ -393,6 +399,7 @@ def _channels2db(session, network_code, station_code, channels, source):
 
 def _response2db(session, network_code, station_code, channel,fill_all=False):
 
+
     # for now, only fill simple_response, channelmap_ampparms and channelmap_codaparms tables
     _simple_response2db(session,network_code,station_code,channel)
 
@@ -403,6 +410,14 @@ def _response2db(session, network_code, station_code, channel,fill_all=False):
     if fill_all:
         # do all IR tables, not implemented yet.
         pass
+
+    pz = None
+    pz = channel.response.get_paz()
+    if pz:
+        _poles_zeros2db(session,network_code,station_code,channel)
+    else:
+        logging.warn("sta:{} chan:{} has no pz stage!".format(station_code, channel.code))
+
 
     return
 
@@ -556,7 +571,84 @@ def _sensitivity2db(session,network_code,station_code,channel):
         commit_metrics["sensitivity_bad"].append(station_code + "." + channel.code)
 
     return
-    
+
+
+def _poles_zeros2db(session,network_code,station_code,channel):
+
+    name = "Key to polezero response for sta:%s cha:%s" % (station_code, channel.code)
+
+    db_pz = PZ(name=name)
+    session.add(db_pz)
+    try:
+        session.commit()
+        commit_metrics["pz_good"].append(station_code + "." + channel.code)
+    except Exception as error:
+        logging.error("Unable to add pz {} to db: {}".format(db_pz,error))
+        commit_metrics["pz_bad"].append(station_code + "." + channel.code)
+    #session.flush()
+    pz_key = db_pz.key
+    if pz_key is None:
+        logging.error("Error retrieving pz_key we just inserted in db! sta:%s cha:%s" % \
+                      (station_code, channel.code))
+
+    pz = channel.response.get_paz()
+    # May need to expand testing to determine if this is A (Laplace - rad/s) or B (Hz - /s)
+    tf_type='B'
+    if "LAPLACE" in pz.pz_transfer_function_type or "RADIAN" in pz.pz_transfer_function_type:
+        tf_type='A'
+    unit_in  = pz.input_units
+    unit_out = pz.output_units
+    zeros = pz.zeros
+    poles = pz.poles
+    ao = pz.normalization_factor
+    af = pz.normalization_frequency
+
+    unit_in_id  = _get_unit(session, pz.input_units, pz.input_units_description)
+    unit_out_id = _get_unit(session, pz.output_units, pz.output_units_description)
+    logging.info("MTH: insert poles_zeros: pz_key=[%s] tf_type=[%s] ao=%f" % \
+                 pz_key, tf_type, ao))
+
+    db_poles_zeros = Poles_Zeros(net=network_code, sta=station_code, seedchan=channel.code, \
+                                 location=fix(channel.location_code), \
+                                 ondate=channel.start_date.datetime, stage_seq=0, \
+                                 unit_in=unit_in_id, unit_out=unit_out_id, \
+                                 ao=ao, af=af, tf_type=tf_type,
+                                 pz_key=pz_key)
+
+    session.add(db_poles_zeros)
+
+    logging.info("MTH: npoles=%d nzeros=%d" % (len(poles), len(zeros)))
+    db_pzs = []
+
+    row_key=0
+    pz_type = 'Z'
+    for zero in zeros:
+        db_pzs.append( PZ_Data(key=pz_key, row_key=row_key, pztype=pz_type, r_value=zero.real, i_value=zero.imag) )
+        logging.info("MTH: insert zero: pz_key=[%s] row_key=[%s]" % (pz_key, row_key))
+        row_key += 1
+    pz_type = 'P'
+    for pole in poles:
+        db_pzs.append( PZ_Data(key=pz_key, row_key=row_key, pztype=pz_type, r_value=pole.real, i_value=pole.imag) )
+        logging.info("MTH: insert pole: pz_key=[%s] row_key=[%s]" % (pz_key, row_key))
+        row_key += 1
+
+    for dbpz in db_pzs:
+        session.add(dbpz)
+
+    if hasattr(channel,"end_date") and channel.end_date:
+        db_poles_zeros.offdate = channel.end_date.datetime
+    else:
+        db_poles_zeros.offdate = DEFAULT_ENDDATE
+
+    try:
+        session.commit()
+        commit_metrics["poles_zeros_good"].append(station_code + "." + channel.code)
+    except Exception as error:
+        logging.error("Unable to add poleszeros {} to db: {}".format(db_poles_zeros,error))
+        commit_metrics["poles_zeros_bad"].append(station_code + "." + channel.code)
+
+    return
+
 
 def fix(location):
     if location == "":
