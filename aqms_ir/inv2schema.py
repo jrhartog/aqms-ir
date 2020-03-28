@@ -627,7 +627,7 @@ def _poles_zeros2db(session,network_code,station_code,channel):
     unit_in_id  = _get_unit(session, pz.input_units, pz.input_units_description)
     unit_out_id = _get_unit(session, pz.output_units, pz.output_units_description)
     logging.info("MTH: insert poles_zeros: pz_key=[%s] tf_type=[%s] ao=%f" % \
-                 pz_key, tf_type, ao))
+                 pz_key, tf_type, ao)
 
     db_poles_zeros = Poles_Zeros(net=network_code, sta=station_code, seedchan=channel.code, \
                                  location=fix(channel.location_code), \
