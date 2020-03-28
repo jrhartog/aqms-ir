@@ -46,7 +46,8 @@ commit_metrics["poles_zeros_good"]  = []
 commit_metrics["poles_zeros_bad"]  = []
 
 def inventory2db(session, inventory, active=False):
-    global ACTIVE_ONLY = active
+    global ACTIVE_ONLY
+    ACTIVE_ONLY = active
     if inventory.networks:
         _networks2db(session, inventory.networks, inventory.source)
     else:
