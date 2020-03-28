@@ -55,6 +55,7 @@ if __name__ == "__main__":
     parser.add_argument("-l","--location",help=help_text)
 
     args = parser.parse_args()
+    active_flag = False
 
     # possible keyword arguments to use in select
     kwargs = {}
@@ -65,7 +66,8 @@ if __name__ == "__main__":
     if args.location:
         kwargs["location"] = args.location
     if args.active:
-        kwargs["starttime"] = UTCDateTime(datetime.datetime.utcnow())
+        active_flag=True
+    #    kwargs["starttime"] = UTCDateTime(datetime.datetime.utcnow())
 
     logfile = "loadStationXML_{}.log".format(datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
     logging.basicConfig(filename=logfile, level=logging.INFO)
@@ -85,7 +87,7 @@ if __name__ == "__main__":
         inv = tmpinv
 
     session = Session()
-    inventory2db(session,inv)
+    inventory2db(session,inv,active=active_flag)
     session.close()
 
     print(inv)
