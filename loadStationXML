@@ -91,8 +91,8 @@ if __name__ == "__main__":
     session.close()
 
     print(inv)
-    print("Database Loading Metrics:\n")
     if args.active:
-        print("(Only loading active channels)")
+        print("(Only loaded active channels)")
+    print("\nDatabase Loading Metrics:\n")
     print_metrics(bad_only=False, abbreviated=True)
 
