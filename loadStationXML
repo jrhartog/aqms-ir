@@ -92,3 +92,5 @@ if __name__ == "__main__":
     print("Database Loading Metrics:\n")
     print_metrics(bad_only=False, abbreviated=True)
 
+    print("MTH: just a check on git permissions")
+

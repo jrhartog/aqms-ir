@@ -195,3 +195,108 @@ class Sensitivity(Base):
                 self.offdate, self.stage_seq, self.sensitivity, self.frequency)
 
 
+"""
+archdb1=> \d poles_zeros
+                                        Table "trinetdb.poles_zeros"
+   Column   |            Type             | Collation | Nullable |                 Default
+------------+-----------------------------+-----------+----------+------------------------------------------
+ net        | character varying(8)        |           | not null |
+ sta        | character varying(6)        |           | not null |
+ seedchan   | character varying(3)        |           | not null |
+ location   | character varying(2)        |           | not null |
+ ondate     | timestamp without time zone |           | not null |
+ stage_seq  | integer                     |           | not null |
+ channel    | character varying(8)        |           |          |
+ channelsrc | character varying(8)        |           |          |
+ offdate    | timestamp without time zone |           |          |
+ pz_key     | integer                     |           | not null |
+ tf_type    | character varying(1)        |           |          |
+ unit_in    | integer                     |           | not null |
+ unit_out   | integer                     |           | not null |
+ ao         | double precision            |           | not null |
+ af         | double precision            |           |          |
+ lddate     | timestamp without time zone |           |          | timezone('UTC'::text, CURRENT_TIMESTAMP)
+Indexes:
+    "p_z00" PRIMARY KEY, btree (net, sta, seedchan, location, ondate, stage_seq)
+"""
+class Poles_Zeros(Base):
+    __tablename__ = "poles_zeros"
+
+    net = Column('net', String(8), primary_key=True, nullable=False)
+    sta = Column('sta', String(6), primary_key=True, nullable=False)
+    seedchan = Column('seedchan', String(3), primary_key=True, nullable=False)
+    location = Column('location', String(2), primary_key=True, nullable=False)
+    ondate = Column('ondate', DateTime, primary_key=True, nullable=False)
+    offdate = Column('offdate', DateTime, default=datetime.datetime(3000,1,1))
+    channel = Column('channel', String(8))
+    channelsrc = Column('channelsrc', String(8), default="SEED")
+    #stage_seq = Column('stage_seq', Integer)
+    stage_seq = Column('stage_seq', Integer, primary_key=True, nullable=False)
+    tf_type  = Column('tf_type', String(1))
+
+    pz_key   = Column('pz_key', ForeignKey('pz.key'),
+                      info="key to PZ to get to list of PZ_Data rows", nullable=False)
+
+    unit_in  = Column('unit_in', Integer, nullable=False)
+    unit_out = Column('unit_out', Integer, nullable=False)
+    ao = Column('ao', Numeric, nullable=False)
+    af = Column('af', Numeric)
+    lddate = Column('lddate', DateTime, server_default=text('NOW()'))
+
+    def __repr__(self):
+        return "Poles_Zeros: net={}, sta={}, seedchan={}, location={}, ondate={}, \
+                offdate={}, stage_seq={}, ao={}, af={}, unit_in={}, unit_out={}".\
+                format(self.net, self.sta, self.seedchan, self.location, self.ondate, \
+                self.offdate, self.stage_seq, self.ao, self.af, self.unit_in, self.unit_out)
+
+"""
+archdb1=> \d pz
+                                          Table "trinetdb.pz"
+ Column |            Type             | Collation | Nullable |                 Default
+--------+-----------------------------+-----------+----------+------------------------------------------
+ key    | integer                     |           | not null |
+ name   | character varying(80)       |           |          |
+ lddate | timestamp without time zone |           |          | timezone('UTC'::text, CURRENT_TIMESTAMP)
+Indexes:
+    "pz00" PRIMARY KEY, btree (key)
+"""
+class PZ(Base):
+    __tablename__ = "pz"
+
+    key  = Column('key', Integer, Sequence('pzseq'), primary_key=True, nullable=False)
+    name = Column('name', String(80))
+    lddate = Column('lddate', DateTime, server_default=text('NOW()'))
+
+    def __repr__(self):
+        return "class PZ: key={}, name=[{}]".format(self.key, self.name)
+
+"""
+archdb1=> \d pz_data
+                    Table "trinetdb.pz_data"
+ Column  |         Type         | Collation | Nullable | Default
+---------+----------------------+-----------+----------+---------
+ key     | integer              |           | not null |
+ row_key | integer              |           | not null |
+ type    | character varying(1) |           |          |
+ r_value | double precision     |           | not null |
+ r_error | double precision     |           |          |
+ i_value | double precision     |           | not null |
+ i_error | double precision     |           |          |
+Indexes:
+    "pzd00" PRIMARY KEY, btree (key, row_key)
+"""
+class PZ_Data(Base):
+    __tablename__ = "pz_data"
+
+    key = Column('key', Integer, primary_key=True, nullable=False)
+    row_key = Column('row_key', Integer, primary_key=True, nullable=False)
+    pztype = Column('type', String(1))
+    r_value = Column('r_value', Numeric, nullable=False)
+    r_error = Column('r_error', Numeric)
+    i_value = Column('i_value', Numeric, nullable=False)
+    i_error = Column('i_error', Numeric)
+
+    def __repr__(self):
+        return "PZ_Data: key={}, row_key={}, type={}, r_value={}, i_value={}".\
+                format(self.key, self.row_key, self.type, self.r_value, self.i_value)
+

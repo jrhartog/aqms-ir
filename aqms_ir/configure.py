@@ -23,6 +23,6 @@ def configure(filename=None):
         DB_PASSWORD = os.getenv("DB_PASSWORD")
         print("Connecting to database {} on host {}".format(DB_NAME,DB_HOST))
         if not DB_PASSWORD:
-            DB_PASSWORD = raw_input("Password for user {} on {}: ".format(DB_USER,DB_NAME))
+            DB_PASSWORD = input("Password for user {} on {}: ".format(DB_USER,DB_NAME))
         configuration["sqlalchemy.url"] = "postgresql://{}:{}@{}:{}/{}".format(DB_USER,DB_PASSWORD,DB_HOST,DB_PORT,DB_NAME)
     return configuration

@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name="aqms-ir", 
-    version="0.3.3",
+    version="0.3.4",
     description="translation between obspy Inventory object and AQMS schema",
     url="http://github.com/pnsn/aqms-ir",
     author="Renate Hartog",
@@ -14,6 +14,6 @@ setup(name="aqms-ir",
     ],
     packages=["aqms_ir"],
     scripts=["loadStationXML","getStationXML"],
-    install_requires=["numpy","obspy>=0.10.2","SQLAlchemy","psycopg2-binary"],
+    install_requires=["numpy","obspy>=0.10.2","SQLAlchemy",],
     zip_safe=False)
 
