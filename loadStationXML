@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
     print(inv)
     print("Database Loading Metrics:\n")
+    if args.active:
+        print("(Only loading active channels)")
     print_metrics(bad_only=False, abbreviated=True)
-
-    print("MTH: just a check on git permissions")
 
