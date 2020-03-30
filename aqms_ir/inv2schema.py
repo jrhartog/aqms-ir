@@ -5,8 +5,15 @@ import logging
 from collections import OrderedDict
 import datetime
 
+from obspy import UTCDateTime
+
 from .schema import Abbreviation, Format, Unit, Channel, Station, SimpleResponse, AmpParms, CodaParms, Sensitivity
 from .schema import PZ, PZ_Data, Poles_Zeros
+
+# when active_only is true, only load currently active stations/channels
+# this can be toggled to True by adding the keyword argument active=True
+# to the main inventory2db function
+ACTIVE_ONLY = False
 
 # station or channel end-date when none has been provided
 DEFAULT_ENDDATE = datetime.datetime(3000,1,1)
@@ -38,7 +45,9 @@ commit_metrics["pz_bad"]  = []
 commit_metrics["poles_zeros_good"]  = []
 commit_metrics["poles_zeros_bad"]  = []
 
-def inventory2db(session, inventory):
+def inventory2db(session, inventory, active=False):
+    global ACTIVE_ONLY
+    ACTIVE_ONLY = active
     if inventory.networks:
         _networks2db(session, inventory.networks, inventory.source)
     else:
@@ -290,13 +299,19 @@ def _station2db(session, network, station, source):
         logging.error("Exception: {}".format(e))
 
     db_station = Station(net=network.code, sta=station.code, ondate=station.start_date.datetime)
-    session.add(db_station)
 
     db_station.net_id = net_id
     if hasattr(station,"end_date") and station.end_date:
         db_station.offdate = station.end_date.datetime
     else:
         db_station.offdate = DEFAULT_ENDDATE
+
+    # return if ACTIVE_ONLY is true and the station's offdate pre-dates today
+    if ACTIVE_ONLY and db_station.offdate < UTCDateTime():
+        logging.info("Station {}.{} not active, not adding".format(network.code,station.code))
+        return
+
+    session.add(db_station)
     db_station.lat = station.latitude
     db_station.lon = station.longitude
     db_station.elev = station.elevation
@@ -348,7 +363,6 @@ def _channel2db(session, network_code, station_code, channel, source):
     format_id = _get_format_id(session)
 
     db_channel = Channel(net=network_code, sta=station_code, seedchan=channel.code, location=fix(channel.location_code), ondate=channel.start_date.datetime)
-    session.add(db_channel)
 
     if inid:
         db_channel.inid = inid
@@ -362,6 +376,13 @@ def _channel2db(session, network_code, station_code, channel, source):
         db_channel.offdate = channel.end_date.datetime
     else:
         db_channel.offdate = DEFAULT_ENDDATE
+
+    # return if ACTIVE_ONLY is true and the channel's offdate pre-dates today
+    if ACTIVE_ONLY and db_channel.offdate < UTCDateTime():
+        logging.info("Channel {}.{}.{}.{} not active, not adding".format(network_code,station_code,channel.code,channel.location_code))
+        return
+
+    session.add(db_channel)
     db_channel.lat = channel.latitude
     db_channel.lon = channel.longitude
     db_channel.elev = channel.elevation
@@ -606,7 +627,7 @@ def _poles_zeros2db(session,network_code,station_code,channel):
     unit_in_id  = _get_unit(session, pz.input_units, pz.input_units_description)
     unit_out_id = _get_unit(session, pz.output_units, pz.output_units_description)
     logging.info("MTH: insert poles_zeros: pz_key=[%s] tf_type=[%s] ao=%f" % \
-                 pz_key, tf_type, ao))
+                 pz_key, tf_type, ao)
 
     db_poles_zeros = Poles_Zeros(net=network_code, sta=station_code, seedchan=channel.code, \
                                  location=fix(channel.location_code), \
