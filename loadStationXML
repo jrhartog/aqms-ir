@@ -47,6 +47,8 @@ if __name__ == "__main__":
     parser.add_argument("-v","--verbose",help=help_text,action="store_true")
     help_text = "Add currently active channels only"
     parser.add_argument("-a","--active",help=help_text,action="store_true")
+    help_text = "Load all SOH channels, default is '[BEHS][HLN]*' (ignored when -c is provided)"
+    parser.add_argument("-i", "--inclusive", help=help_text, action="store_true")
     help_text = "Specify a station code, wildcards are allowed"
     parser.add_argument("-s","--station",help=help_text)
     help_text = "Specify a channel code, wildcards are allowed"
@@ -56,6 +58,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     active_flag = False
+    inclusive = False
 
     # possible keyword arguments to use in select
     kwargs = {}
@@ -67,14 +70,16 @@ if __name__ == "__main__":
         kwargs["location"] = args.location
     if args.active:
         active_flag=True
-    #    kwargs["starttime"] = UTCDateTime(datetime.datetime.utcnow())
+    if not args.inclusive and not args.channel:
+        # unless otherwise specified, restrict to seismic channels
+        kwargs["channel"] = '[BEHS][HNL]*'
 
     logfile = "loadStationXML_{}.log".format(datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
-    logging.basicConfig(filename=logfile, level=logging.INFO)
+    logging.basicConfig(filename=logfile, level=logging.WARNING)
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
     
     # This command will create the database tables if they do not exist yet.
     Base.metadata.create_all(engine)
