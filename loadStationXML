@@ -4,6 +4,7 @@ from __future__ import print_function
 import argparse
 import datetime
 import logging
+import sys
 
 from obspy import read_inventory
 from obspy import UTCDateTime
@@ -99,5 +100,7 @@ if __name__ == "__main__":
     if args.active:
         print("(Only loaded active channels)")
     print("\nDatabase Loading Metrics:\n")
-    print_metrics(bad_only=False, abbreviated=True)
+    status = print_metrics(bad_only=False, abbreviated=True)
+    
+    sys.exit(status)
 

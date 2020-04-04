@@ -678,8 +678,19 @@ def fix(location):
         return location
 
 def print_metrics(bad_only=True, abbreviated=False):
+    """ Returns number of bad metrics and prints
+        metrics to the screen.
+        
+        param: bad_only Toggle whether to only show bad commits (default=True)
+        type: boolean
+        param: abbreviated Shorter output (default=False)
+        type: boolean
+    """
+    bad_metrics = 0
     for k,v in six.iteritems(commit_metrics):
         if len(v) > 0:
+            if "bad" in k:
+                bad_metrics += 1
             if bad_only and "bad" in k:
                 if abbreviated:
                     print("{}: {}".format(k,len(v)))
@@ -690,7 +701,7 @@ def print_metrics(bad_only=True, abbreviated=False):
                     print("{}: {}".format(k,len(v)))
                 else:
                     print_metric(k,v)
-    return
+    return bad_metrics
 
 def print_metric(key, values):
 
