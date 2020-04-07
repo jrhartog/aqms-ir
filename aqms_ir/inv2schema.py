@@ -466,7 +466,7 @@ def _simple_response2db(session,network_code,station_code,channel):
     db_simple_response.natural_frequency = fn
     db_simple_response.damping_constant = damping
     db_simple_response.gain = gain
-    if channel.response.instrument_sensitivity.input_units.value.isupper():
+    if channel.response.instrument_sensitivity.input_units.isupper():
         db_simple_response.gain_units = "DU/" + channel.response.instrument_sensitivity.input_units
     else:
         db_simple_response.gain_units = "counts/" + channel.response.instrument_sensitivity.input_units
