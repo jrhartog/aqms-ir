@@ -466,7 +466,10 @@ def _simple_response2db(session,network_code,station_code,channel):
     db_simple_response.natural_frequency = fn
     db_simple_response.damping_constant = damping
     db_simple_response.gain = gain
-    db_simple_response.gain_units = "DU/" + channel.response.instrument_sensitivity.input_units
+    if channel.response.instrument_sensitivity.input_units.isupper():
+        db_simple_response.gain_units = "DU/" + channel.response.instrument_sensitivity.input_units
+    else:
+        db_simple_response.gain_units = "counts/" + channel.response.instrument_sensitivity.input_units
     db_simple_response.low_freq_corner = highest_freq
     db_simple_response.high_freq_corner = lowest_freq
     if hasattr(channel,"end_date") and channel.end_date:
