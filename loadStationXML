@@ -50,6 +50,8 @@ if __name__ == "__main__":
     parser.add_argument("-a","--active",help=help_text,action="store_true")
     help_text = "Load all SOH channels, default is '[BEHS][HLN][123ENZ]' (ignored when -c is provided)"
     parser.add_argument("-i", "--inclusive", help=help_text, action="store_true")
+    help_text = "also populate poles and zeros (buggy)"
+    parser.add_argument("-p", "--pz", help=help_text, action="store_true")
     help_text = "Specify a station code, wildcards are allowed"
     parser.add_argument("-s","--station",help=help_text)
     help_text = "Specify a channel code, wildcards are allowed"
@@ -60,6 +62,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     active_flag = False
     inclusive = False
+    pz_flag = False
 
     # possible keyword arguments to use in select
     kwargs = {}
@@ -74,6 +77,8 @@ if __name__ == "__main__":
     if not args.inclusive and not args.channel:
         # unless otherwise specified, restrict to seismic channels
         kwargs["channel"] = '[BEHS][HNL][123ENZ]'
+    if args.pz:
+        pz_flag = True
 
     logfile = "loadStationXML_{}.log".format(datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
     logging.basicConfig(filename=logfile, level=logging.WARNING)
@@ -93,7 +98,7 @@ if __name__ == "__main__":
         inv = tmpinv
 
     session = Session()
-    inventory2db(session,inv,active=active_flag)
+    inventory2db(session,inv,active=active_flag,include_pz=pz_flag)
     session.close()
 
     print(inv)

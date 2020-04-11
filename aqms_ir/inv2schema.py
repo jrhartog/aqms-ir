@@ -15,6 +15,9 @@ from .schema import PZ, PZ_Data, Poles_Zeros
 # to the main inventory2db function
 ACTIVE_ONLY = False
 
+# the PZ loading part is still buggy, make loading them optional
+INCLUDE_PZ = False
+
 # station or channel end-date when none has been provided
 DEFAULT_ENDDATE = datetime.datetime(3000,1,1)
 
@@ -45,9 +48,14 @@ commit_metrics["pz_bad"]  = []
 commit_metrics["poles_zeros_good"]  = []
 commit_metrics["poles_zeros_bad"]  = []
 
-def inventory2db(session, inventory, active=False):
+def inventory2db(session, inventory, active=False, include_pz=False):
+    
+    # ugly kluge to propagate these flags to all the methods
     global ACTIVE_ONLY
+    global INCLUDE_PZ
     ACTIVE_ONLY = active
+    INCLUDE_PZ = include_pz
+
     if inventory.networks:
         _networks2db(session, inventory.networks, inventory.source)
     else:
@@ -432,12 +440,13 @@ def _response2db(session, network_code, station_code, channel,fill_all=False):
         # do all IR tables, not implemented yet.
         pass
 
-    pz = None
-    pz = channel.response.get_paz()
-    if pz:
-        _poles_zeros2db(session,network_code,station_code,channel)
-    else:
-        logging.warn("sta:{} chan:{} has no pz stage!".format(station_code, channel.code))
+    if INCLUDE_PZ:
+        pz = None
+        pz = channel.response.get_paz()
+        if pz:
+            _poles_zeros2db(session,network_code,station_code,channel)
+        else:
+            logging.warn("sta:{} chan:{} has no pz stage!".format(station_code, channel.code))
 
 
     return
