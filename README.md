@@ -4,6 +4,13 @@ WARNING: install psycopg2 first!
 Tools to interact with AQMS Instrument Response part of database schema
 Uses the obspy Inventory class to store instrument response info
 
+# Installation
+* create a virtual python environment using conda or python3, I will show the latter way.
+* `python -m venv py3_for_metadata`
+* `source py3_for_metadata/bin/activate`
+* `pip install git+https://github.com/pnsn/aqms-ir.git`
+* you should now have the scripts `getStationXML` and `loadStationXML` in your path.
+
 ## loadStationXML
 loadStationXML -h
 
