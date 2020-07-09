@@ -562,6 +562,8 @@ def _simple_response2db(session,network_code,station_code,channel):
         else:
             clip = -1
         
+    if clip == -1:
+        logging.error("No valid clip level found for {}".format(channel))
     # have clip, fill channelmap_ampparms                
     db_ampparms = AmpParms(net=network_code, sta=station_code, \
                   seedchan=channel.code, location=fix(channel.location_code), \

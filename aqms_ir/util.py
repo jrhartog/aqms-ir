@@ -193,7 +193,7 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
         if "320" in sensor:
             # IDS packages, were 2g
             cliplevel = gain * 2 * 9.8
-        elif "CMG-5TD" in sensor:
+        elif "CMG-5TD" in sensor or "CMG-5T" in sensor:
             # 4g, except for a few, but can't tell.
             cliplevel = gain * 4 * 9.8
         elif "EPISENSOR DECK" in sensor:
