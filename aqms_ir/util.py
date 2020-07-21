@@ -217,7 +217,7 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
         elif "CMG-3ESP" in sensor:
             # 0.50 cm/s
             cliplevel = gain * 0.0050
-        elif "TRILLIUM COMPACT" in sensor:
+        elif "TRILLIUM COMPACT" in sensor or "CASCADIA" in sensor:
             # 2.6 cm/s
             cliplevel = gain * 0.0260
         elif "TRILLIUM" in sensor or "TR240" in sensor or "TR120" in sensor or "T120PA" in sensor:
