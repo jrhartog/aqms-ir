@@ -169,8 +169,15 @@ def _remove_station(session, network, station):
         Removes this station from station_data and will remove
         its channels as well. See remove_channels.
     """
-    network_code = network.code
-    station_code = station.code
+    try:
+        # obspy objects?
+        network_code = network.code
+        station_code = station.code
+    except Exception as e:
+        # no, then assume regular strings
+        logging.info("Station: {}.{}".format(network,station))
+        network_code = network
+        station_code = station
 
     status = 0
 
@@ -181,17 +188,27 @@ def _remove_station(session, network, station):
 
     try:
         session.commit()
+        logging.info("Removed {}.{} from {}".format(network_code,station_code,Station.__tablename__,e))
     except Exception as e:
-        logging.error("Unable to delete station {}.{}: {}".format(network_code,station_code,e))
+        logging.error("Unable to delete station {}.{} from {}: {}".format(network_code,station_code,Station.__tablename__,e))
         sys.exit()
 
-    if station.channels:
+    if hasattr(station,"channels") and len(station.channels) > 0:
         status = status + _remove_channels(session, network_code, station)
+    else:
+        # no need to construct channels, just using string should work:
+        status = status + _remove_channels(session, network_code, station_code)
     
     return status
 
 def _remove_channels(session, network_code, station):
-    station_code = station.code
+    try:
+        # obspy object?
+        station_code = station.code
+    except Exception as e:
+        # if not, assume a regular string
+        station_code = station
+
     status = 0
     # remove all channels for this station, not just the ones in the XML file
     try:
@@ -209,13 +226,17 @@ def _remove_channels(session, network_code, station):
     except Exception as e:
         logging.error("Unable to delete overall sensitivity: {}.{}: {}".format(network_code,station_code,e))
 
-    #for channel in station.channels:
-    #    try:
-    #        status = status + _remove_channel(session, network_code, station_code, channel)
-    #    except Exception as e:
-    #        logging.error("Unable to delete channel {}.{}.{}.{}: {}".format( \
-    #        network_code, station_code, channel.code, channel.location_code, e))
-    #        continue # next channel
+    try:
+        status = _remove_poles_zeros(session, network_code, station_code)
+    except Exception as e:
+        logging.error("Unable to delete poles and zeros: {}.{}: {}".format(network_code,station_code,e))
+
+    try:
+        commit_status = session.commit()
+        logging.info("Successfully removed channels and instrument response for {}.{}".format(network_code,station_code))
+    except Exception as e:
+        logging.error("Unable to commit deletions from channels and response tables".format(e))
+
     return status
 
 def _remove_simple_responses(session, network_code, station_code):
@@ -246,10 +267,45 @@ def _remove_sensitivity(session, network_code, station_code):
 
     return status
 
+def _remove_poles_zeros(session, network_code, station_code):
+    """
+        Removes any rows in poles_zeros for this station. Will also remove
+        the PZ and PZ_Data entries if there are no other poles_zeros rows that
+        refer to them, to limit the number of obsolete PZ,PZ_Data rows in the
+        database.
+    """
+
+    pz_keys = set()
+    status = -1
+    logging.debug("In _remove_poles_zeros, for station {}.{}".format(network_code,station_code))
+    try:
+        all_in_list = session.query(Poles_Zeros.pz_key).filter_by(net=network_code,sta=station_code).all()
+        for key in all_in_list:
+            pz_keys.add(key)
+        logging.debug("Retrieved {} unique pole zero keys for {}.{}\n".format(len(pz_keys),network_code,station_code))
+        status = session.query(Poles_Zeros).filter_by(net=network_code,sta=station_code).delete()
+        logging.debug("Deleting poles_zeros entries: {}".format(status))
+    except Exception as e:
+        logging.error(e)
+
+    for key in pz_keys:
+        # do other poles_zeros entries using this key? yes, keep, no, remove.
+        rows_returned = session.query(Poles_Zeros.pz_key).filter(Poles_Zeros.pz_key==key, Poles_Zeros.net != network_code, Poles_Zeros.sta != station_code).all()
+        logging.debug("PZ KEY: {}. Number of other poles_zeros that use this set of poles and zeros: {}".format(key,len(rows_returned)))
+        if len(rows_returned) > 0:
+            logging.debug("PZ and PZ_Data in use, not removing")
+        else:
+            # remove as well.
+            status = status + session.query(PZ).filter_by(key=key).delete()
+            status1 = session.query(PZ_Data).filter_by(key=key).delete()
+            logging.debug("Removed {} PZ and PZ_data entries".format(status))
+
+    return status 
+
 def _remove_channel(session, network_code, station_code, channel):
     """
-        Removes this station from station_data and will remove
-        its channels as well. See remove_channels.
+        Removes this channel from channel_data and will remove
+        its response as well. See remove_simple_response
     """
     status = 0
     try:
@@ -609,7 +665,15 @@ def _sensitivity2db(session,network_code,station_code,channel):
 
 
 def _poles_zeros2db(session,network_code,station_code,channel):
-
+    """
+       TO DO:
+            - run channel.response.get_paz first!  returns obspy PolesZerosResponseStage
+            - get the name of the poles_zeros response if it exists (pz.name), USE IT for PZ table. If not, 
+              see if there is a sensor description and use it. If not, make something up like you did here.
+            - If the named response is already in the database PZ table, use its pz_key to retrieve the info from PZ_Data,
+              if the poles and zeros are the same, do not add another entry to PZ and PZ_Data.
+            - get the stage_sequence number from it, pz.stage_sequence_number and USE IT for Poles_Zeros.stage_seq.
+    """
     name = "Key to polezero response for sta:%s cha:%s" % (station_code, channel.code)
 
     db_pz = PZ(name=name)
