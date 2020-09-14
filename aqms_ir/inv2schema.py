@@ -7,8 +7,10 @@ import datetime
 
 from obspy import UTCDateTime
 
+from sqlalchemy import text
+
 from .schema import Abbreviation, Format, Unit, Channel, Station, SimpleResponse, AmpParms, CodaParms, Sensitivity
-from .schema import PZ, PZ_Data, Poles_Zeros
+from .schema import PZ, PZ_Data, Poles_Zeros, StaCorrection
 
 # when active_only is true, only load currently active stations/channels
 # this can be toggled to True by adding the keyword argument active=True
@@ -26,6 +28,24 @@ CUTOFF_GM = 1.7297e-7
 
 # units for seismic channels
 SEISMIC_UNITS = ['M/S', 'm/s', 'M/S**2', 'm/s**2', 'M/S/S', 'm/s/s', 'CM/S', 'cm/s', 'CM/S**2', 'cm/s**2', 'CM/S/S', 'cm/s/s', 'M', 'm', 'CM', 'cm']
+# simple_response DU/M/S or DU/M/S**2 or counts/(cm/sec) counts/(cm/sec2)
+GAIN_UNITS = {'M/S' : 'DU/M/S', 
+              'm/s' : 'DU/M/S', 
+              'M/S**2' : 'DU/M/S**2', 
+              'm/s**2' : 'DU/M/S**2', 
+              'M/S/S' : 'DU/M/S**2', 
+              'm/s/s' : 'DU/M/S**2', 
+              'CM/S' : 'counts/(cm/sec)', 
+              'cm/s': 'counts/(cm/sec)', 
+              'CM/S**2' : 'counts/(cm/sec2)', 
+              'cm/s**2' : 'counts/(cm/sec2)', 
+              'CM/S/S' : 'counts/(cm/sec2)', 
+              'cm/s/s' : 'counts/(cm/sec2)', 
+              'M' : 'DU/M', 
+              'm' : 'DU/M', 
+              'CM' : 'counts/cm', 
+              'cm' : 'counts/cm'
+             }
 
 # keep track of successful and failed commits
 commit_metrics = OrderedDict()
@@ -388,9 +408,62 @@ def _station2db(session, network, station, source):
         logging.error("Cannot save station_data: {}".format(e))
         commit_metrics["stations_bad"].append(station_code)
         
-
     if station.channels:
         _channels2db(session, network_code, station_code, station.channels, source)
+
+    # magnitude station corrections 
+    # only add default values if there is no entry in stacorrections for this station yet!
+    try:
+        logging.debug("Querying for station correction entries for {}.{}".format(network_code,station_code))
+        stacors = session.query(StaCorrection).filter_by(net=network_code,sta=station_code).all()
+        logging.debug("Number of station corrections: {}".format(len(stacors)))
+        if len(stacors) == 0:
+            # add default values for this station
+            _insert_default_stacors(network_code,station_code)
+    except Exception as e:
+        logging.error("Unable to query station corrections for {}.{}: {}".format(network_code,station_code,e))
+
+    return
+
+def _insert_default_stacors(session,network_code,station_code):
+    """
+        inserts 0. (ml) and 1. (me) corrections for horizontal channels
+    """
+    statement = text("select net, sta, seedchan, location, min(ondate), max(offdate) "
+                "from channel_data where seedchan in ('SNN', 'SNE', 'BNN', 'BNE', "
+                "'ENN', 'ENE', 'HNN', 'HNE', 'EHN', 'EHE', 'BHN', 'BHE', 'HHN', "
+                "'HHE', 'EH1','EH2','BH1','BH2','HH1','HH2') and  "
+                "samprate in (20, 40, 50, 80, 100, 200) and net=:net and sta=:sta "
+                "group by net, sta, seedchan,location")
+    statement = statement.columns(Channel.net,Channel.sta,Channel.seedchan,Channel.location,Channel.ondate,Channel.offdate)
+    logging.debug(statement)
+    try:
+        horizontals = session.query(Channel).from_statement(statement).params(net=network_code,sta=station_code).all()
+        for chan in horizontals:
+            for corr_type in ['ml', 'me']:
+                scor = StaCorrection()
+                scor.net = chan.net
+                scor.sta = chan.sta
+                scor.seedchan = chan.seedchan
+                scor.location = chan.location
+                scor.ondate = chan.ondate
+                scor.offdate = chan.offdate
+                scor.auth="UW"
+                scor.corr_flag="C"
+                if corr_type == "ml":
+                    scor.corr = 0.
+                else:
+                    scor.corr = 1.
+                scor.corr_type=corr_type
+                session.add(scor)
+    except Exception as e:
+        logging.error("Unable to create default station correction for {}.{}: {}".format(network_code, station_code,e))
+                   
+    try:
+        session.commit()
+    except Exception as e:
+        logging.error("Unable to commit station correction: {}".format(e))
+
     return
 
 def _stations2db(session, network, source):
@@ -531,10 +604,8 @@ def _simple_response2db(session,network_code,station_code,channel):
     db_simple_response.natural_frequency = fn
     db_simple_response.damping_constant = damping
     db_simple_response.gain = gain
-    if channel.response.instrument_sensitivity.input_units.isupper():
-        db_simple_response.gain_units = "DU/" + channel.response.instrument_sensitivity.input_units
-    else:
-        db_simple_response.gain_units = "counts/" + channel.response.instrument_sensitivity.input_units
+    # gcda codes(rad2,ampgen) currently only understand DU/M/S or DU/M/S**2
+    db_simple_response.gain_units = GAIN_UNITS[channel.response.instrument_sensitivity.input_units]
     db_simple_response.low_freq_corner = highest_freq
     db_simple_response.high_freq_corner = lowest_freq
     if hasattr(channel,"end_date") and channel.end_date:

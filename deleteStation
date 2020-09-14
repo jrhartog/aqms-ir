@@ -12,7 +12,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy.orm import sessionmaker
 
 from aqms_ir.configure import configure
-from aqms_ir.inv2schema import _remove_station, _remove_poles_zeros, print_metrics
+from aqms_ir.inv2schema import _remove_station
 
 # Global scope: start the engine and bind a Session factory to it
     

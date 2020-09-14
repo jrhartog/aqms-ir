@@ -300,3 +300,25 @@ class PZ_Data(Base):
         return "PZ_Data: key={}, row_key={}, type={}, r_value={}, i_value={}".\
                 format(self.key, self.row_key, self.type, self.r_value, self.i_value)
 
+class StaCorrection(Base):
+    __tablename__ = "stacorrections"
+
+    net = Column('net', String(8), primary_key=True, nullable=False)
+    sta = Column('sta', String(6), primary_key=True, nullable=False)
+    seedchan = Column('seedchan', String(3), primary_key=True, nullable=False)
+    location = Column('location', String(2), primary_key=True, nullable=False)
+    ondate = Column('ondate', DateTime, primary_key=True, nullable=False)
+    offdate = Column('offdate', DateTime, default=datetime.datetime(3000,1,1))
+    channel = Column('channel', String(8))
+    channelsrc = Column('channelsrc', String(8), default="SEED")
+    auth = Column('auth', String(15), default="UW")
+    corr = Column('corr', Numeric, nullable=False)
+    corr_flag = Column('corr_flag', String(1))
+    corr_type = Column('corr_type', String(3), primary_key=True, nullable=False)
+    lddate = Column('lddate', DateTime, server_default=text('NOW()'))
+
+    def __repr__(self):
+        return "StaCorrection: net={}, sta={}, seedchan={}, location={}, ondate={}, \
+                offdate={}, corr={}, corr_type={}".\
+                format(self.net, self.sta, self.seedchan, self.location, self.ondate, \
+                self.offdate, self.corr, self.corr_type)
