@@ -208,7 +208,7 @@ def _remove_station(session, network, station):
 
     try:
         session.commit()
-        logging.info("Removed {}.{} from {}".format(network_code,station_code,Station.__tablename__,e))
+        logging.info("Removed {}.{} from {}".format(network_code,station_code,Station.__tablename__))
     except Exception as e:
         logging.error("Unable to delete station {}.{} from {}: {}".format(network_code,station_code,Station.__tablename__,e))
         sys.exit()
