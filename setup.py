@@ -13,7 +13,7 @@ setup(name="aqms-ir",
         'Intended Audience :: Science/Research',
     ],
     packages=["aqms_ir"],
-    scripts=["loadStationXML","getStationXML"],
+    scripts=["loadStationXML","getStationXML","deleteStation"],
     install_requires=["numpy","obspy>=0.10.2","SQLAlchemy",],
     zip_safe=False)
 
