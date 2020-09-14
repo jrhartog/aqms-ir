@@ -1,0 +1,71 @@
+#!/usr/bin/env python
+from __future__ import print_function
+
+import argparse
+import datetime
+import logging
+import sys
+
+from obspy import UTCDateTime
+
+from sqlalchemy import engine_from_config
+from sqlalchemy.orm import sessionmaker
+
+from aqms_ir.configure import configure
+from aqms_ir.inv2schema import _remove_station
+
+# Global scope: start the engine and bind a Session factory to it
+    
+# create configured engine instance
+global engine 
+engine = engine_from_config(configure(), prefix='sqlalchemy.')
+
+# create a configured "Session" class
+Session = sessionmaker(bind=engine)
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description="Deletes a station's      \
+        metadata from (PostgreSQL) AQMS tables station_data, channel_data, \
+        simple_response, channelmap_ampparms, channelmap_codaparms, and    \
+        poles_and_zeros related tables. It does not remove any entries     \
+        from the various dictionary tables.                                \
+                                                                           \
+        Database connection parameters have to be set with environment     \
+        variables DB_NAME, DB_HOST, DB_PORT, DB_USER, and optionally,      \
+        DB_PASSWORD. \
+                                                             \
+        Logs are written to deleteStation_YYYY-mm-ddTHH:MM:SS.log \
+        See https://github.com/pnsn/aqms_ir") 
+
+    # required argument
+    help_text = "FDSN Network code, e.g. UW, CI, HV"
+    parser.add_argument("network_code",help=help_text)
+    help_text = "Station lookup code, e.g. ASR, PAS, LON, COR"
+    parser.add_argument("station_code",help=help_text)
+
+    # optional argument
+    help_text = "Be more verbose in logfile"
+    parser.add_argument("-v","--verbose",help=help_text,action="store_true")
+
+    args = parser.parse_args()
+
+    logfile = "deleteStation_{}.log".format(datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
+    logging.basicConfig(filename=logfile, level=logging.WARNING)
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
+    
+    logging.info("Deleting meta-data for station {}.{}".format(args.network_code,args.station_code))
+    print("Deleting meta-data for station {}.{}".format(args.network_code,args.station_code))
+
+    session = Session()
+    status = _remove_station(session, args.network_code, args.station_code)
+    session.close()
+
+    logging.info("\nRemoved {} station(s)".format(status))
+    print("\nRemoved {} station(s)".format(status))
+    
+    sys.exit(status)
+

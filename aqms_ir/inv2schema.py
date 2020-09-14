@@ -7,8 +7,10 @@ import datetime
 
 from obspy import UTCDateTime
 
+from sqlalchemy import text
+
 from .schema import Abbreviation, Format, Unit, Channel, Station, SimpleResponse, AmpParms, CodaParms, Sensitivity
-from .schema import PZ, PZ_Data, Poles_Zeros
+from .schema import PZ, PZ_Data, Poles_Zeros, StaCorrection
 
 # when active_only is true, only load currently active stations/channels
 # this can be toggled to True by adding the keyword argument active=True
@@ -26,6 +28,24 @@ CUTOFF_GM = 1.7297e-7
 
 # units for seismic channels
 SEISMIC_UNITS = ['M/S', 'm/s', 'M/S**2', 'm/s**2', 'M/S/S', 'm/s/s', 'CM/S', 'cm/s', 'CM/S**2', 'cm/s**2', 'CM/S/S', 'cm/s/s', 'M', 'm', 'CM', 'cm']
+# simple_response DU/M/S or DU/M/S**2 or counts/(cm/sec) counts/(cm/sec2)
+GAIN_UNITS = {'M/S' : 'DU/M/S', 
+              'm/s' : 'DU/M/S', 
+              'M/S**2' : 'DU/M/S**2', 
+              'm/s**2' : 'DU/M/S**2', 
+              'M/S/S' : 'DU/M/S**2', 
+              'm/s/s' : 'DU/M/S**2', 
+              'CM/S' : 'counts/(cm/sec)', 
+              'cm/s': 'counts/(cm/sec)', 
+              'CM/S**2' : 'counts/(cm/sec2)', 
+              'cm/s**2' : 'counts/(cm/sec2)', 
+              'CM/S/S' : 'counts/(cm/sec2)', 
+              'cm/s/s' : 'counts/(cm/sec2)', 
+              'M' : 'DU/M', 
+              'm' : 'DU/M', 
+              'CM' : 'counts/cm', 
+              'cm' : 'counts/cm'
+             }
 
 # keep track of successful and failed commits
 commit_metrics = OrderedDict()
@@ -169,8 +189,15 @@ def _remove_station(session, network, station):
         Removes this station from station_data and will remove
         its channels as well. See remove_channels.
     """
-    network_code = network.code
-    station_code = station.code
+    try:
+        # obspy objects?
+        network_code = network.code
+        station_code = station.code
+    except Exception as e:
+        # no, then assume regular strings
+        logging.info("Station: {}.{}".format(network,station))
+        network_code = network
+        station_code = station
 
     status = 0
 
@@ -181,17 +208,27 @@ def _remove_station(session, network, station):
 
     try:
         session.commit()
+        logging.info("Removed {}.{} from {}".format(network_code,station_code,Station.__tablename__))
     except Exception as e:
-        logging.error("Unable to delete station {}.{}: {}".format(network_code,station_code,e))
+        logging.error("Unable to delete station {}.{} from {}: {}".format(network_code,station_code,Station.__tablename__,e))
         sys.exit()
 
-    if station.channels:
+    if hasattr(station,"channels") and len(station.channels) > 0:
         status = status + _remove_channels(session, network_code, station)
+    else:
+        # no need to construct channels, just using string should work:
+        status = status + _remove_channels(session, network_code, station_code)
     
     return status
 
 def _remove_channels(session, network_code, station):
-    station_code = station.code
+    try:
+        # obspy object?
+        station_code = station.code
+    except Exception as e:
+        # if not, assume a regular string
+        station_code = station
+
     status = 0
     # remove all channels for this station, not just the ones in the XML file
     try:
@@ -209,13 +246,17 @@ def _remove_channels(session, network_code, station):
     except Exception as e:
         logging.error("Unable to delete overall sensitivity: {}.{}: {}".format(network_code,station_code,e))
 
-    #for channel in station.channels:
-    #    try:
-    #        status = status + _remove_channel(session, network_code, station_code, channel)
-    #    except Exception as e:
-    #        logging.error("Unable to delete channel {}.{}.{}.{}: {}".format( \
-    #        network_code, station_code, channel.code, channel.location_code, e))
-    #        continue # next channel
+    try:
+        status = _remove_poles_zeros(session, network_code, station_code)
+    except Exception as e:
+        logging.error("Unable to delete poles and zeros: {}.{}: {}".format(network_code,station_code,e))
+
+    try:
+        commit_status = session.commit()
+        logging.info("Successfully removed channels and instrument response for {}.{}".format(network_code,station_code))
+    except Exception as e:
+        logging.error("Unable to commit deletions from channels and response tables".format(e))
+
     return status
 
 def _remove_simple_responses(session, network_code, station_code):
@@ -246,10 +287,45 @@ def _remove_sensitivity(session, network_code, station_code):
 
     return status
 
+def _remove_poles_zeros(session, network_code, station_code):
+    """
+        Removes any rows in poles_zeros for this station. Will also remove
+        the PZ and PZ_Data entries if there are no other poles_zeros rows that
+        refer to them, to limit the number of obsolete PZ,PZ_Data rows in the
+        database.
+    """
+
+    pz_keys = set()
+    status = -1
+    logging.debug("In _remove_poles_zeros, for station {}.{}".format(network_code,station_code))
+    try:
+        all_in_list = session.query(Poles_Zeros.pz_key).filter_by(net=network_code,sta=station_code).all()
+        for key in all_in_list:
+            pz_keys.add(key)
+        logging.debug("Retrieved {} unique pole zero keys for {}.{}\n".format(len(pz_keys),network_code,station_code))
+        status = session.query(Poles_Zeros).filter_by(net=network_code,sta=station_code).delete()
+        logging.debug("Deleting poles_zeros entries: {}".format(status))
+    except Exception as e:
+        logging.error(e)
+
+    for key in pz_keys:
+        # do other poles_zeros entries using this key? yes, keep, no, remove.
+        rows_returned = session.query(Poles_Zeros.pz_key).filter(Poles_Zeros.pz_key==key, Poles_Zeros.net != network_code, Poles_Zeros.sta != station_code).all()
+        logging.debug("PZ KEY: {}. Number of other poles_zeros that use this set of poles and zeros: {}".format(key,len(rows_returned)))
+        if len(rows_returned) > 0:
+            logging.debug("PZ and PZ_Data in use, not removing")
+        else:
+            # remove as well.
+            status = status + session.query(PZ).filter_by(key=key).delete()
+            status1 = session.query(PZ_Data).filter_by(key=key).delete()
+            logging.debug("Removed {} PZ and PZ_data entries".format(status))
+
+    return status 
+
 def _remove_channel(session, network_code, station_code, channel):
     """
-        Removes this station from station_data and will remove
-        its channels as well. See remove_channels.
+        Removes this channel from channel_data and will remove
+        its response as well. See remove_simple_response
     """
     status = 0
     try:
@@ -332,9 +408,62 @@ def _station2db(session, network, station, source):
         logging.error("Cannot save station_data: {}".format(e))
         commit_metrics["stations_bad"].append(station_code)
         
-
     if station.channels:
         _channels2db(session, network_code, station_code, station.channels, source)
+
+    # magnitude station corrections 
+    # only add default values if there is no entry in stacorrections for this station yet!
+    try:
+        logging.debug("Querying for station correction entries for {}.{}".format(network_code,station_code))
+        stacors = session.query(StaCorrection).filter_by(net=network_code,sta=station_code).all()
+        logging.debug("Number of station corrections: {}".format(len(stacors)))
+        if len(stacors) == 0:
+            # add default values for this station
+            _insert_default_stacors(network_code,station_code)
+    except Exception as e:
+        logging.error("Unable to query station corrections for {}.{}: {}".format(network_code,station_code,e))
+
+    return
+
+def _insert_default_stacors(session,network_code,station_code):
+    """
+        inserts 0. (ml) and 1. (me) corrections for horizontal channels
+    """
+    statement = text("select net, sta, seedchan, location, min(ondate), max(offdate) "
+                "from channel_data where seedchan in ('SNN', 'SNE', 'BNN', 'BNE', "
+                "'ENN', 'ENE', 'HNN', 'HNE', 'EHN', 'EHE', 'BHN', 'BHE', 'HHN', "
+                "'HHE', 'EH1','EH2','BH1','BH2','HH1','HH2') and  "
+                "samprate in (20, 40, 50, 80, 100, 200) and net=:net and sta=:sta "
+                "group by net, sta, seedchan,location")
+    statement = statement.columns(Channel.net,Channel.sta,Channel.seedchan,Channel.location,Channel.ondate,Channel.offdate)
+    logging.debug(statement)
+    try:
+        horizontals = session.query(Channel).from_statement(statement).params(net=network_code,sta=station_code).all()
+        for chan in horizontals:
+            for corr_type in ['ml', 'me']:
+                scor = StaCorrection()
+                scor.net = chan.net
+                scor.sta = chan.sta
+                scor.seedchan = chan.seedchan
+                scor.location = chan.location
+                scor.ondate = chan.ondate
+                scor.offdate = chan.offdate
+                scor.auth="UW"
+                scor.corr_flag="C"
+                if corr_type == "ml":
+                    scor.corr = 0.
+                else:
+                    scor.corr = 1.
+                scor.corr_type=corr_type
+                session.add(scor)
+    except Exception as e:
+        logging.error("Unable to create default station correction for {}.{}: {}".format(network_code, station_code,e))
+                   
+    try:
+        session.commit()
+    except Exception as e:
+        logging.error("Unable to commit station correction: {}".format(e))
+
     return
 
 def _stations2db(session, network, source):
@@ -475,10 +604,8 @@ def _simple_response2db(session,network_code,station_code,channel):
     db_simple_response.natural_frequency = fn
     db_simple_response.damping_constant = damping
     db_simple_response.gain = gain
-    if channel.response.instrument_sensitivity.input_units.isupper():
-        db_simple_response.gain_units = "DU/" + channel.response.instrument_sensitivity.input_units
-    else:
-        db_simple_response.gain_units = "counts/" + channel.response.instrument_sensitivity.input_units
+    # gcda codes(rad2,ampgen) currently only understand DU/M/S or DU/M/S**2
+    db_simple_response.gain_units = GAIN_UNITS[channel.response.instrument_sensitivity.input_units]
     db_simple_response.low_freq_corner = highest_freq
     db_simple_response.high_freq_corner = lowest_freq
     if hasattr(channel,"end_date") and channel.end_date:
@@ -609,7 +736,15 @@ def _sensitivity2db(session,network_code,station_code,channel):
 
 
 def _poles_zeros2db(session,network_code,station_code,channel):
-
+    """
+       TO DO:
+            - run channel.response.get_paz first!  returns obspy PolesZerosResponseStage
+            - get the name of the poles_zeros response if it exists (pz.name), USE IT for PZ table. If not, 
+              see if there is a sensor description and use it. If not, make something up like you did here.
+            - If the named response is already in the database PZ table, use its pz_key to retrieve the info from PZ_Data,
+              if the poles and zeros are the same, do not add another entry to PZ and PZ_Data.
+            - get the stage_sequence number from it, pz.stage_sequence_number and USE IT for Poles_Zeros.stage_seq.
+    """
     name = "Key to polezero response for sta:%s cha:%s" % (station_code, channel.code)
 
     db_pz = PZ(name=name)
