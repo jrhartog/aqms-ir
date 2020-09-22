@@ -419,7 +419,7 @@ def _station2db(session, network, station, source):
         logging.debug("Number of station corrections: {}".format(len(stacors)))
         if len(stacors) == 0:
             # add default values for this station
-            _insert_default_stacors(network_code,station_code)
+            _insert_default_stacors(session, network_code, station_code)
     except Exception as e:
         logging.error("Unable to query station corrections for {}.{}: {}".format(network_code,station_code,e))
 
