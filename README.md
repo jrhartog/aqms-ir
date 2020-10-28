@@ -10,6 +10,7 @@ Uses the obspy Inventory class to store instrument response info
 * `source py3_for_metadata/bin/activate`
 * `pip install git+https://github.com/pnsn/aqms-ir.git`
 * you should now have the scripts `getStationXML`, `loadStationXML`, and `deleteStation` in your path.
+* to pull in code updates from this repository: `pip install git+https://github.com/pnsn/aqms-ir.git --upgrade`
 
 ## getStationXML
 
