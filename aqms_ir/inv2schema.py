@@ -655,10 +655,15 @@ def _simple_response2db(session,network_code,station_code,channel):
             # possibly instrument identifier from SIS dataless->IRIS->StationXML
             sensor, sensor_sn, logger, logger_sn = parse_instrument_identifier(channel.sensor.description)
         else:
+            # from SIS with all fields entered
             sensor = channel.sensor.type
             sensor_sn = channel.sensor.serial_number
             logger = channel.data_logger.type
             logger_sn = channel.data_logger.serial_number
+
+        if sensor and not logger and sensor == "None":
+            # no information, assume old analog, force earthworm digitizer cliplevel.
+            logger = "LEGACY" 
 
         logging.info("{}-{}: channel equipment: {}-{}={}-{}".format(station_code,channel.code,sensor,sensor_sn,logger,logger_sn))
 
