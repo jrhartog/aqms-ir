@@ -46,7 +46,7 @@ if __name__ == "__main__":
     help_text = "Specify Webservice to query (default=IRIS)"
     parser.add_argument("-ws","--webservice",help=help_text,default="IRIS", choices=["BGR",
     "EMSC","ETH","GEONET","GFZ","ICGC","INGV","IPGP","IRIS","ISC","KNMI","KOERI","LMU","NCEDC",
-    "NIEP","NOA","ODC","ORFEUS","RAPISHAKE","RESIF","SCEDC","TEXNET","USGS","USP"])
+    "NIEP","NOA","ODC","ORFEUS","RASPISHAKE","RESIF","SCEDC","TEXNET","USGS","USP"])
     help_text = "Specify level of information (default=response)"
     parser.add_argument("-level","--level",help=help_text,default="response",choices=["station","channel","response"])
     
