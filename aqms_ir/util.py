@@ -202,6 +202,9 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
         elif "EPISENSOR" in sensor:
             # assume the rest is 4g
             cliplevel = gain * 4 * 9.8
+        elif "RT147" in sensor:
+            # PNSN's were 4g
+            cliplevel = gain * 4 * 9.8
         elif "TITAN" in sensor or "Titan" in sensor:
             cliplevel = gain * 4 * 9.8
         elif "FBA" in sensor:
@@ -234,6 +237,8 @@ def get_cliplevel(sensor, sensor_sn, logger, logger_sn, gain):
         elif "L-22" in sensor:
             cliplevel = gain * 0.001
         elif "SS-1" in sensor:
+            cliplevel = gain * 0.001
+        elif "S-13" in sensor:
             cliplevel = gain * 0.001
         return cliplevel
 
