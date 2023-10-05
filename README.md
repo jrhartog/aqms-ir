@@ -1,3 +1,6 @@
+# MOVED
+This project is now maintained here: https://gitlab.com/aqms-swg/aqms-ir
+
 # aqms-ir
 WARNING: install psycopg2 first!
 
